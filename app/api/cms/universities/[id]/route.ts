@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { isValidObjectId } from "mongoose";
 import University from "@/models/University";
 import { connectDB } from "@/lib/mongodb";
+import { authorizeAdmin } from "@/lib/api-auth";
+import { revalidatePublicHomepage } from "@/services/revalidation.service";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -9,6 +11,7 @@ type RouteContext = {
 
 export async function GET(_request: Request, { params }: RouteContext) {
   try {
+    const { admin } = await authorizeAdmin();
     await connectDB();
 
     const { id } = await params;
@@ -20,7 +23,9 @@ export async function GET(_request: Request, { params }: RouteContext) {
       );
     }
 
-    const university = await University.findById(id).lean();
+    const filter = admin ? { _id: id } : { _id: id, status: "published" };
+
+    const university = await University.findOne(filter).lean();
 
     if (!university) {
       return NextResponse.json(
@@ -44,6 +49,9 @@ export async function GET(_request: Request, { params }: RouteContext) {
 }
 
 export async function PATCH(request: Request, { params }: RouteContext) {
+  const { response } = await authorizeAdmin();
+  if (response) return response;
+
   try {
     await connectDB();
 
@@ -177,6 +185,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       );
     }
 
+    await revalidatePublicHomepage();
+
     return NextResponse.json({
       success: true,
       message: "University updated successfully",
@@ -194,6 +204,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
 export async function DELETE(_request: Request, { params }: RouteContext) {
   try {
+    const { response } = await authorizeAdmin();
+    if (response) return response;
     await connectDB();
 
     const { id } = await params;
@@ -213,6 +225,8 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
         { status: 404 },
       );
     }
+
+    await revalidatePublicHomepage();
 
     return NextResponse.json({
       success: true,

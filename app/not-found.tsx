@@ -23,7 +23,7 @@ export default function NotFound() {
 
         <div className="mt-7 flex justify-center">
           <Link
-            href="/cms"
+            href="/cms/homepage"
             className="inline-flex items-center gap-2 rounded-lg bg-zinc-950 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800"
           >
             <ArrowLeft size={16} />

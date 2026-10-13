@@ -150,11 +150,6 @@ export default function UniversityForm({
 
     if (isSubmitting) return;
 
-    // if (!cardImage) {
-    //   toast.error("Please upload a university card background image");
-    //   return;
-    // }
-
     if (!formData.ctaUrl.trim()) {
       toast.error("Please enter the university page URL");
       return;

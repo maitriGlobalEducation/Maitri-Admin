@@ -13,31 +13,31 @@ export async function POST(request: Request) {
     if (
       !body ||
       typeof body !== "object" ||
-      !("email" in body) ||
+      !("username" in body) ||
       !("password" in body) ||
-      typeof body.email !== "string" ||
+      typeof body.username !== "string" ||
       typeof body.password !== "string" ||
-      !body.email.trim() ||
+      !body.username.trim() ||
       !body.password ||
-      body.email.length > 254 ||
+      body.username.length > 30 ||
       body.password.length > 128
     ) {
       return NextResponse.json(
-        { message: "Invalid email or password." },
+        { message: "Invalid username or password." },
         { status: 400 },
       );
     }
 
-    const email = body.email.trim().toLowerCase();
+    const username = body.username.trim().toLowerCase();
     const password = body.password;
 
     await connectDB();
 
-    const admin = await Admin.findOne({ email }).select("+password");
+    const admin = await Admin.findOne({ username }).select("+password");
 
     if (!admin || !admin.isActive) {
       return NextResponse.json(
-        { message: "Invalid email or password." },
+        { message: "Invalid username or password." },
         { status: 401 },
       );
     }
@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
     if (!passwordMatches) {
       return NextResponse.json(
-        { message: "Invalid email or password." },
+        { message: "Invalid username or password." },
         { status: 401 },
       );
     }
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
       message: "Login successful.",
       admin: {
         id: admin._id.toString(),
-        email: admin.email,
+        username: admin.username,
         role: admin.role,
       },
     });

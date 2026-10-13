@@ -73,6 +73,25 @@ export interface HomepageAdmissionsContent {
   navigationLinks: HomepageNavigationLink[];
 }
 
+export interface HomepageUniversityCard {
+  id: string;
+  name: string;
+  slug: string;
+  country: string;
+  logo: HomepageImage | null;
+  reportLabel: string;
+  reportYear: string;
+  title: string;
+  description: string;
+  ctaLabel: string;
+  ctaUrl: string;
+}
+
+export interface HomepageUniversitiesContent {
+  heading: string;
+  cards: HomepageUniversityCard[];
+}
+
 export interface HomepageCareerChoiceCard {
   id: string;
   image: {

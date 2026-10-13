@@ -1,12 +1,19 @@
 import { NextResponse } from "next/server";
 import University from "@/models/University";
 import { connectDB } from "@/lib/mongodb";
+import { authorizeAdmin } from "@/lib/api-auth";
+import { revalidatePublicHomepage } from "@/services/revalidation.service";
 
 export async function GET() {
   try {
+    const { admin } = await authorizeAdmin();
     await connectDB();
 
-    const universities = await University.find().sort({ createdAt: -1 }).lean();
+    const filter = admin ? {} : { status: "published" };
+
+    const universities = await University.find(filter)
+      .sort({ createdAt: -1 })
+      .lean();
 
     return NextResponse.json({
       success: true,
@@ -23,6 +30,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const { response } = await authorizeAdmin();
+  if (response) return response;
+
   try {
     await connectDB();
 
@@ -96,6 +106,8 @@ export async function POST(request: Request) {
       ctaUrl: ctaUrl.trim(),
       status,
     });
+
+    await revalidatePublicHomepage();
 
     return NextResponse.json(
       {

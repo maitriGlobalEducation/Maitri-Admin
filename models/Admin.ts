@@ -3,7 +3,7 @@ import mongoose, { Schema, type Model } from "mongoose";
 export type AdminRole = "SUPER_ADMIN" | "ADMIN" | "EDITOR";
 
 export interface IAdmin {
-  email: string;
+  username: string;
   password: string;
   role: AdminRole;
   isActive: boolean;
@@ -13,12 +13,15 @@ export interface IAdmin {
 
 const AdminSchema = new Schema<IAdmin>(
   {
-    email: {
+    username: {
       type: String,
       required: true,
       unique: true,
       lowercase: true,
       trim: true,
+      minlength: 3,
+      maxlength: 30,
+      match: /^[a-z0-9._-]+$/,
     },
     password: {
       type: String,

@@ -1,97 +1,295 @@
-@import "tailwindcss";
+ @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+ :root {
+   --background: #ffffff;
+   --foreground: #171717;
+ }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+ @theme inline {
+   --color-background: var(--background);
+   --color-foreground: var(--foreground);
+   --font-sans: var(--font-geist-sans);
+   --font-mono: var(--font-geist-mono);
+ }
 
-html {
-  color-scheme: light;
-}
+ html {
+   color-scheme: light;
+ }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-}
+ body {
+   background: var(--background);
+   color: var(--foreground);
+ }
 
-.Toastify__toast,
-.Toastify__toast-body {
-  font-family: var(--font-geist-sans) !important;
-}
+ .Toastify__toast,
+ .Toastify__toast-body {
+   font-family: var(--font-geist-sans) !important;
+ }
 
-/* Tiptap Blog Editor */
+ /* ========================================
+   TIPTAP BLOG EDITOR
+======================================== */
 
-.blog-editor.ProseMirror {
-  min-height: 20rem;
-  outline: none;
-}
+ .blog-editor.ProseMirror {
+   min-height: 20rem;
+   min-width: 0;
+   outline: none;
+ }
 
-.blog-editor.ProseMirror p {
-  margin: 0.75rem 0;
-  font-size: 0.875rem;
-  line-height: 1.75;
-}
+ .blog-editor.ProseMirror p {
+   margin: 0.75rem 0;
+   font-size: 0.875rem;
+   line-height: 1.75;
+ }
 
-.blog-editor.ProseMirror h2 {
-  margin-top: 1.75rem;
-  margin-bottom: 0.75rem;
+ .blog-editor.ProseMirror h2 {
+   margin-top: 1.75rem;
+   margin-bottom: 0.75rem;
+   font-size: 1.875rem;
+   line-height: 1.25;
+   font-weight: 700;
+   color: #18181b;
+ }
 
-  font-size: 1.875rem;
-  line-height: 1.25;
-  font-weight: 700;
+ .blog-editor.ProseMirror h3 {
+   margin-top: 1.5rem;
+   margin-bottom: 0.625rem;
+   font-size: 1.5rem;
+   line-height: 1.3;
+   font-weight: 600;
+   color: #18181b;
+ }
 
-  color: #18181b;
-}
+ .blog-editor.ProseMirror ul {
+   margin: 0.75rem 0;
+   padding-left: 1.75rem;
+   list-style-type: disc;
+ }
 
-.blog-editor.ProseMirror h3 {
-  margin-top: 1.5rem;
-  margin-bottom: 0.625rem;
+ .blog-editor.ProseMirror ol {
+   margin: 0.75rem 0;
+   padding-left: 1.75rem;
+   list-style-type: decimal;
+ }
 
-  font-size: 1.5rem;
-  line-height: 1.3;
-  font-weight: 600;
+ .blog-editor.ProseMirror li {
+   margin: 0.25rem 0;
+ }
 
-  color: #18181b;
-}
+ .blog-editor.ProseMirror li p {
+   margin: 0;
+ }
 
-.blog-editor.ProseMirror ul {
-  margin: 0.75rem 0;
-  padding-left: 1.75rem;
-  list-style-type: disc;
-}
+ .blog-editor.ProseMirror blockquote {
+   margin: 1rem 0;
+   border-left: 3px solid #d4d4d8;
+   padding-left: 1rem;
+   color: #52525b;
+ }
 
-.blog-editor.ProseMirror ol {
-  margin: 0.75rem 0;
-  padding-left: 1.75rem;
-  list-style-type: decimal;
-}
+ .blog-editor.ProseMirror strong {
+   font-weight: 700;
+ }
 
-.blog-editor.ProseMirror li {
-  margin: 0.25rem 0;
-}
+ .blog-editor.ProseMirror em {
+   font-style: italic;
+ }
 
-.blog-editor.ProseMirror li p {
-  margin: 0;
-}
+ /* ========================================
+   BLOG EDITOR TABLES
+======================================== */
 
-.blog-editor.ProseMirror blockquote {
-  margin: 1rem 0;
-  border-left: 3px solid #d4d4d8;
-  padding-left: 1rem;
-  color: #52525b;
-}
+ /* Horizontal scrolling for wide tables */
+ .blog-editor .tableWrapper,
+ .blog-editor .ProseMirror .tableWrapper {
+   display: block;
+   width: 100%;
+   max-width: 100%;
+   overflow-x: auto;
+   margin: 1.5rem 0;
+ }
 
-.blog-editor.ProseMirror strong {
-  font-weight: 700;
-}
+ /* Table layout */
+ .blog-editor table,
+ .blog-editor.ProseMirror table,
+ .blog-editor .ProseMirror table {
+   width: 100%;
+   min-width: 850px;
+   table-layout: auto;
+   border: 1px solid #e4e4e7 !important;
+   border-collapse: collapse !important;
+   border-spacing: 0 !important;
+   margin: 0;
+   font-size: 15px;
+   line-height: 1.8;
+ }
 
-.blog-editor.ProseMirror em {
-  font-style: italic;
-}
+ /* Visible light borders on every cell */
+ .blog-editor table th,
+ .blog-editor table td,
+ .blog-editor.ProseMirror table th,
+ .blog-editor.ProseMirror table td,
+ .blog-editor .ProseMirror table th,
+ .blog-editor .ProseMirror table td {
+   border: 1px solid #d4d4d8 !important;
+   padding: 16px 20px !important;
+   text-align: left;
+   vertical-align: top;
+   white-space: normal;
+   overflow-wrap: break-word;
+   word-break: normal;
+   color: #3f3f46;
+ }
+
+ /* Header cells */
+ .blog-editor table th,
+ .blog-editor.ProseMirror table th,
+ .blog-editor .ProseMirror table th {
+   background-color: #f4f4f5 !important;
+   color: #27272a;
+   font-weight: 600;
+ }
+
+ /* Alternate row backgrounds */
+ .blog-editor table tr:nth-child(even) td,
+ .blog-editor.ProseMirror table tr:nth-child(even) td,
+ .blog-editor .ProseMirror table tr:nth-child(even) td {
+   background-color: #fafafa;
+ }
+
+ /* Cell paragraphs */
+ .blog-editor table th p,
+ .blog-editor table td p,
+ .blog-editor.ProseMirror table th p,
+ .blog-editor.ProseMirror table td p,
+ .blog-editor .ProseMirror table th p,
+ .blog-editor .ProseMirror table td p {
+   margin: 0;
+   font-size: inherit;
+   line-height: inherit;
+ }
+
+ /* Selected cells */
+ .blog-editor .selectedCell {
+   background-color: #e0f2fe !important;
+ }
+
+ /* Column resizing */
+ .blog-editor .column-resize-handle {
+   position: absolute;
+   top: 0;
+   right: -2px;
+   bottom: -1px;
+   width: 4px;
+   background: #0d9488;
+   pointer-events: none;
+ }
+
+ .blog-editor .resize-cursor {
+   cursor: col-resize;
+ }
+
+ /* ========================================
+   LINKS
+======================================== */
+
+ .blog-editor a,
+ .blog-content a {
+   color: #2563eb;
+   text-decoration: underline;
+   text-underline-offset: 3px;
+   cursor: pointer;
+ }
+
+ .blog-editor a:hover,
+ .blog-content a:hover {
+   color: #1d4ed8;
+ }
+
+ /* ========================================
+   BLOG IMAGES
+======================================== */
+
+ .blog-editor .blog-image,
+ .blog-content .blog-image {
+   display: block;
+   max-width: 100%;
+   height: auto;
+   margin: 1.5rem auto;
+   border-radius: 0.5rem;
+ }
+
+ .blog-editor img {
+   cursor: default;
+ }
+
+ .blog-content img {
+   width: auto;
+   max-width: 100%;
+   height: auto;
+ }
+
+ /* Resizable image wrapper */
+ .resizable-image-wrapper {
+   position: relative;
+   display: block;
+   width: fit-content;
+   max-width: 100%;
+   margin: 1.5rem 0;
+   line-height: 0;
+   border: none;
+   outline: none;
+   box-shadow: none;
+ }
+
+ .resizable-image-wrapper .blog-image-resizable {
+   display: block;
+   max-width: 100%;
+   height: auto;
+   border-radius: 4px;
+   user-select: none;
+ }
+
+ .resizable-image-wrapper.is-selected .blog-image-resizable {
+   outline: none;
+   box-shadow: none;
+   border: 1px solid #d1d5db;
+ }
+
+ /* Image resize handles */
+ .image-resize-handle {
+   position: absolute;
+   z-index: 20;
+   width: 12px;
+   height: 12px;
+   padding: 0;
+   background: #0d9488;
+   border: 2px solid #ffffff;
+   border-radius: 3px;
+   pointer-events: auto;
+   touch-action: none;
+ }
+
+ .handle-top-left {
+   top: -6px;
+   left: -6px;
+   cursor: nwse-resize;
+ }
+
+ .handle-top-right {
+   top: -6px;
+   right: -6px;
+   cursor: nesw-resize;
+ }
+
+ .handle-bottom-left {
+   bottom: -6px;
+   left: -6px;
+   cursor: nesw-resize;
+ }
+
+ .handle-bottom-right {
+   right: -6px;
+   bottom: -6px;
+   cursor: nwse-resize;
+ }

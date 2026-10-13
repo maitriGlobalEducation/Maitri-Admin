@@ -36,6 +36,7 @@ export default function HomepageCareerChoicesForm({
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [uploadingCardId, setUploadingCardId] = useState<string | null>(null);
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [tagInputs, setTagInputs] = useState<Record<string, string>>({});
 
   const updateContent = (updates: Partial<HomepageCareerChoicesContent>) => {
     onChange({ ...content, ...updates });
@@ -362,14 +363,30 @@ export default function HomepageCareerChoicesForm({
                     <label className="block text-sm font-medium text-zinc-700">
                       Category Tags
                     </label>
+
                     <input
-                      value={card.tags.join(", ")}
-                      onChange={(event) =>
-                        updateTags(card.id, event.target.value)
-                      }
+                      value={tagInputs[card.id] ?? card.tags.join(", ")}
+                      onChange={(event) => {
+                        const value = event.target.value;
+
+                        setTagInputs((prev) => ({
+                          ...prev,
+                          [card.id]: value,
+                        }));
+
+                        updateTags(card.id, value);
+                      }}
+                      onBlur={() => {
+                        setTagInputs((prev) => {
+                          const next = { ...prev };
+                          delete next[card.id];
+                          return next;
+                        });
+                      }}
                       placeholder="Design, Creative, Build"
                       className={inputStyles}
                     />
+
                     <p className="text-xs text-zinc-400">
                       Separate tags with commas.
                     </p>

@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import Event from "@/models/Event";
 import cloudinary from "@/lib/cloudinary";
 import { connectDB } from "@/lib/mongodb";
+import { authorizeAdmin } from "@/lib/api-auth";
 
 interface RouteContext {
   params: Promise<{
@@ -12,6 +13,7 @@ interface RouteContext {
 
 export async function GET(_request: Request, { params }: RouteContext) {
   try {
+    const { admin } = await authorizeAdmin();
     const { id } = await params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -26,7 +28,9 @@ export async function GET(_request: Request, { params }: RouteContext) {
 
     await connectDB();
 
-    const event = await Event.findById(id).lean();
+    const filter = admin ? { _id: id } : { _id: id, status: "published" };
+
+    const event = await Event.findOne(filter).lean();
 
     if (!event) {
       return NextResponse.json(
@@ -56,6 +60,9 @@ export async function GET(_request: Request, { params }: RouteContext) {
 }
 
 export async function PATCH(request: Request, { params }: RouteContext) {
+  const { response } = await authorizeAdmin();
+  if (response) return response;
+
   try {
     const { id } = await params;
 
@@ -213,6 +220,9 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 }
 
 export async function DELETE(_request: Request, { params }: RouteContext) {
+  const { response } = await authorizeAdmin();
+  if (response) return response;
+
   try {
     const { id } = await params;
 

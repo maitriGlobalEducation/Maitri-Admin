@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Testimonial from "@/models/Testimonial";
 import cloudinary from "@/lib/cloudinary";
+import { authorizeAdmin } from "@/lib/api-auth";
 
 interface RouteContext {
   params: Promise<{
@@ -12,6 +13,9 @@ interface RouteContext {
 }
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
+  const { response } = await authorizeAdmin();
+  if (response) return response;
+
   try {
     const { id } = await context.params;
 
@@ -110,6 +114,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 }
 
 export async function DELETE(_request: NextRequest, context: RouteContext) {
+  const { response } = await authorizeAdmin();
+  if (response) return response;
   try {
     const { id } = await context.params;
 

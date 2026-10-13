@@ -39,10 +39,18 @@ export default function HomepageManager() {
   const [homepage, setHomepage] = useState<Homepage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [savedHomepage, setSavedHomepage] = useState<Homepage | null>(null);
 
   useEffect(() => {
     getHomepage()
-      .then(setHomepage)
+      .then((data) => {
+        if (data) {
+          setHomepage(data);
+          setSavedHomepage(data);
+        } else {
+          toast.error("Homepage settings have not been initialized yet.");
+        }
+      })
       .catch((error) => {
         console.error(error);
         toast.error("Failed to load homepage settings");
@@ -69,12 +77,32 @@ export default function HomepageManager() {
       });
 
       setHomepage(savedHomepage);
+      setSavedHomepage(savedHomepage);
     } catch (error) {
       console.error(error);
     } finally {
       setIsSaving(false);
     }
   };
+
+  const isSectionDirty = (type: string) => {
+    if (!homepage || !savedHomepage) return false;
+
+    const currentSection =
+      homepage.sections.find((section) => section.type === type) ?? null;
+
+    const savedSection =
+      savedHomepage.sections.find((section) => section.type === type) ?? null;
+
+    return JSON.stringify(currentSection) !== JSON.stringify(savedSection);
+  };
+
+  const isHeroDirty = () => {
+    if (!homepage || !savedHomepage) return false;
+
+    return JSON.stringify(homepage.hero) !== JSON.stringify(savedHomepage.hero);
+  };
+
   const aboutSection = homepage?.sections.find(
     (section) => section.type === "about",
   );
@@ -367,6 +395,7 @@ export default function HomepageManager() {
           number="01"
           title="Hero Section"
           description="Background video, heading, subtitle and two CTAs"
+          isDirty={isHeroDirty()}
           // defaultOpen
         >
           <HomepageHeroForm
@@ -383,6 +412,7 @@ export default function HomepageManager() {
           number="02"
           title="Who We Are & What We Do"
           description="Image, introduction and CTA"
+          isDirty={isSectionDirty("about")}
         >
           <HomepageAboutForm
             content={aboutContent}
@@ -396,6 +426,7 @@ export default function HomepageManager() {
           number="03"
           title="Study in Prestigious Locations"
           description="Section heading, link and country image cards"
+          isDirty={isSectionDirty("locations")}
         >
           <HomepageLocationsForm
             content={locationsContent}
@@ -420,6 +451,7 @@ export default function HomepageManager() {
           number="05"
           title="Elite Career Choices"
           description="Manage career cards, images, categories and source names"
+          isDirty={isSectionDirty("careerChoices")}
         >
           <HomepageCareerChoicesForm
             content={careerChoicesContent}

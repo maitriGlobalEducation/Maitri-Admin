@@ -34,6 +34,12 @@ interface BlogFormData {
   featured: boolean;
 }
 
+interface BlogCategory {
+  _id: string;
+  name: string;
+  slug: string;
+}
+
 const emptyContent = {
   type: "doc",
   content: [
@@ -71,6 +77,9 @@ export default function BlogForm({ blog, onCancel, onSuccess }: BlogFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [metaKeywordsInput, setMetaKeywordsInput] = useState("");
+  const [categories, setCategories] = useState<BlogCategory[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
+  const [categoryError, setCategoryError] = useState("");
 
   useEffect(() => {
     if (blog) {
@@ -121,6 +130,38 @@ export default function BlogForm({ blog, onCancel, onSuccess }: BlogFormProps) {
     setImages([]);
     setCardImageIndex(0);
   }, [blog]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setIsLoadingCategories(true);
+        setCategoryError("");
+
+        const response = await fetch("/api/cms/blog-categories");
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.message ?? "Failed to fetch categories");
+        }
+
+        setCategories(result.categories);
+      } catch (error) {
+        console.error("FETCH BLOG CATEGORIES ERROR:", error);
+
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Failed to load blog categories";
+
+        setCategoryError(message);
+        toast.error(message);
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const updateField = <K extends keyof BlogFormData>(
     field: K,
@@ -279,13 +320,37 @@ export default function BlogForm({ blog, onCancel, onSuccess }: BlogFormProps) {
               </FormField>
 
               <FormField label="Category" required>
-                <input
+                <select
                   required
                   value={formData.category}
                   onChange={(e) => updateField("category", e.target.value)}
-                  placeholder="e.g. Study Abroad"
-                  className={inputStyles}
-                />
+                  disabled={isLoadingCategories || categories?.length === 0}
+                  className={`${inputStyles} disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-500`}
+                >
+                  <option value="" disabled>
+                    {isLoadingCategories
+                      ? "Loading categories..."
+                      : categoryError
+                        ? "Failed to load categories"
+                        : categories?.length === 0
+                          ? "No categories available"
+                          : "Select a category"}
+                  </option>
+
+                  {categories?.map((category) => (
+                    <option key={category._id} value={category.name}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
+
+                {!isLoadingCategories &&
+                  categories?.length === 0 &&
+                  !categoryError && (
+                    <p className="mt-1.5 text-xs text-zinc-500">
+                      Create a blog category before creating a blog.
+                    </p>
+                  )}
               </FormField>
             </div>
           </div>

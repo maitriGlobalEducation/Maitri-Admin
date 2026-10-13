@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Testimonial from "@/models/Testimonial";
 import { connectDB } from "@/lib/mongodb";
+import { authorizeAdmin } from "@/lib/api-auth";
 
 export async function GET() {
   try {
@@ -28,6 +29,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const { response } = await authorizeAdmin();
+  if (response) return response;
+
   try {
     const body = await request.json();
 

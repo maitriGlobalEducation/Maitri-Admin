@@ -204,13 +204,13 @@ export default function BlogsManager() {
                         )}
 
                         <div className="min-w-0">
-                          <p className="truncate font-medium text-zinc-900">
+                          <p className="truncate text-sm font-medium text-zinc-900">
                             {blog.title}
                           </p>
 
-                          <p className="mt-1 truncate text-xs text-zinc-500">
+                          {/* <p className="mt-1 truncate text-xs text-zinc-500">
                             /{blog.slug}
-                          </p>
+                          </p> */}
                         </div>
                       </div>
                     </td>

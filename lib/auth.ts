@@ -7,7 +7,7 @@ import { connectDB } from "./mongodb";
 import Admin from "@/models/Admin";
 
 const COOKIE_NAME = "maitri_admin_session";
-const SESSION_DURATION = 60 * 60 * 8; // 8 hours
+const SESSION_DURATION = 60 * 60 * 24 * 7; // 7 days
 
 function getSecret() {
   const secret = process.env.AUTH_SECRET;
@@ -74,7 +74,14 @@ export async function getSession(): Promise<AdminSession | null> {
 
 export async function deleteSession() {
   const cookieStore = await cookies();
-  cookieStore.delete(COOKIE_NAME);
+
+  cookieStore.set(COOKIE_NAME, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
 }
 
 export function hasRole(session: AdminSession, allowedRoles: AdminRole[]) {
@@ -94,7 +101,7 @@ export async function getAuthenticatedAdmin() {
     _id: session.adminId,
     isActive: true,
   })
-    .select("_id name email role")
+    .select("_id username role")
     .lean();
 
   if (!admin || admin.role !== session.role) {
@@ -103,7 +110,7 @@ export async function getAuthenticatedAdmin() {
 
   return {
     id: admin._id.toString(),
-    email: admin.email,
+    username: admin.username,
     role: admin.role,
   };
 }

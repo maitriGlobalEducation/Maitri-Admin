@@ -2,12 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { connectDB } from "@/lib/mongodb";
 import Scholarship from "@/models/Scholarship";
+import { authorizeAdmin } from "@/lib/api-auth";
 
 export async function GET() {
   try {
+    const { admin } = await authorizeAdmin();
+
     await connectDB();
 
-    const scholarships = await Scholarship.find({})
+    const filter = admin ? {} : { status: "published" };
+
+    const scholarships = await Scholarship.find(filter)
       .sort({ createdAt: -1 })
       .lean();
 
@@ -29,6 +34,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const { response } = await authorizeAdmin();
+  if (response) return response;
+
   try {
     await connectDB();
 

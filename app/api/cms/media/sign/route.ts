@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import cloudinary from "@/lib/cloudinary";
+import { authorizeAdmin } from "@/lib/api-auth";
 
 const allowedFolders = {
   blogs: "maitri/blogs",
@@ -13,6 +14,9 @@ const allowedFolders = {
 } as const;
 
 export async function POST(request: NextRequest) {
+  const { response } = await authorizeAdmin();
+  if (response) return response;
+
   try {
     const body = await request.json();
 

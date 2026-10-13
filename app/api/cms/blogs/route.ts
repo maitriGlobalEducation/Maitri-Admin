@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
+import { authorizeAdmin } from "@/lib/api-auth";
 import Blog from "@/models/Blog";
 
 export async function POST(request: NextRequest) {
+  const { response } = await authorizeAdmin();
+
+  if (response) {
+    return response;
+  }
+
   try {
     const body = await request.json();
 
@@ -13,17 +20,12 @@ export async function POST(request: NextRequest) {
       content,
       cardImage,
       contentImage,
-
-      // SEO
       metaTitle,
       metaDescription,
       metaKeywords,
       focusKeyword,
-
-      // CTA
       ctaText,
       ctaLink,
-
       status,
       featured,
     } = body;
@@ -65,7 +67,11 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
 
-    const existingBlog = await Blog.findOne({ slug });
+    const normalizedSlug = slug.trim().toLowerCase();
+
+    const existingBlog = await Blog.findOne({
+      slug: normalizedSlug,
+    });
 
     if (existingBlog) {
       return NextResponse.json(
@@ -79,29 +85,27 @@ export async function POST(request: NextRequest) {
 
     const blog = await Blog.create({
       title: title.trim(),
-      slug: slug.trim().toLowerCase(),
+      slug: normalizedSlug,
       category: category.trim(),
-
       content,
-
       cardImage: cardImage ?? null,
       contentImage: contentImage ?? null,
-
-      // SEO
       metaTitle: metaTitle?.trim() ?? "",
       metaDescription: metaDescription?.trim() ?? "",
       metaKeywords: Array.isArray(metaKeywords)
-        ? metaKeywords.map((keyword: string) => keyword.trim()).filter(Boolean)
+        ? metaKeywords
+            .filter(
+              (keyword: unknown): keyword is string =>
+                typeof keyword === "string",
+            )
+            .map((keyword: string) => keyword.trim())
+            .filter(Boolean)
         : [],
       focusKeyword: focusKeyword?.trim() ?? "",
-
-      // CTA
       ctaText: ctaText?.trim() ?? "",
       ctaLink: ctaLink?.trim() ?? "",
-
       status,
       featured: Boolean(featured),
-
       publishedAt: status === "published" ? new Date() : null,
     });
 
@@ -117,10 +121,7 @@ export async function POST(request: NextRequest) {
     console.error("CREATE BLOG ERROR:", error);
 
     return NextResponse.json(
-      {
-        success: false,
-        message: "Failed to create blog",
-      },
+      { success: false, message: "Failed to create blog" },
       { status: 500 },
     );
   }
@@ -130,7 +131,13 @@ export async function GET() {
   try {
     await connectDB();
 
-    const blogs = await Blog.find({}).sort({ createdAt: -1 }).lean();
+    // Public visitors should only see published blogs.
+    // Authenticated admins can see drafts as well.
+    const { admin } = await authorizeAdmin();
+
+    const filter = admin ? {} : { status: "published" };
+
+    const blogs = await Blog.find(filter).sort({ createdAt: -1 }).lean();
 
     return NextResponse.json({
       success: true,
@@ -140,10 +147,7 @@ export async function GET() {
     console.error("GET BLOGS ERROR:", error);
 
     return NextResponse.json(
-      {
-        success: false,
-        message: "Failed to fetch blogs",
-      },
+      { success: false, message: "Failed to fetch blogs" },
       { status: 500 },
     );
   }

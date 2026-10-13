@@ -2,11 +2,11 @@ import type { Homepage } from "@/types/homepage";
 
 interface HomepageResponse {
   success: boolean;
-  data: Homepage;
+  data: Homepage | null;
   message?: string;
 }
 
-export async function getHomepage(): Promise<Homepage> {
+export async function getHomepage(): Promise<Homepage | null> {
   const response = await fetch("/api/cms/homepage");
   const result: HomepageResponse = await response.json();
 
@@ -28,7 +28,7 @@ export async function updateHomepage(homepage: Homepage): Promise<Homepage> {
 
   const result: HomepageResponse = await response.json();
 
-  if (!response.ok || !result.success) {
+  if (!response.ok || !result.success || !result.data) {
     throw new Error(result.message ?? "Failed to save homepage");
   }
 

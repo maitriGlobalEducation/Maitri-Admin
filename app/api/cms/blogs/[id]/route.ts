@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-
+import { authorizeAdmin } from "@/lib/api-auth";
 import { connectDB } from "@/lib/mongodb";
 import Blog from "@/models/Blog";
 import cloudinary from "@/lib/cloudinary";
@@ -12,6 +12,12 @@ interface RouteContext {
 }
 
 export async function PATCH(request: NextRequest, context: RouteContext) {
+  const { response } = await authorizeAdmin();
+
+  if (response) {
+    return response;
+  }
+
   try {
     const { id } = await context.params;
 
@@ -188,6 +194,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 }
 
 export async function DELETE(_request: NextRequest, context: RouteContext) {
+  const { response } = await authorizeAdmin();
+
+  if (response) {
+    return response;
+  }
+
   try {
     const { id } = await context.params;
 

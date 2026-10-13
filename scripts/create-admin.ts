@@ -5,10 +5,10 @@ import { connectDB } from "../lib/mongodb";
 import Admin from "../models/Admin";
 
 async function main() {
-  const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const username = process.env.ADMIN_USERNAME?.trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
 
-  if (!email || !password) {
+  if (!username || !password) {
     throw new Error(
       "Set ADMIN_NAME, ADMIN_EMAIL, and ADMIN_PASSWORD in your environment.",
     );
@@ -20,22 +20,21 @@ async function main() {
 
   await connectDB();
 
-  const existingAdmin = await Admin.findOne({ email });
+  const existingAdmin = await Admin.findOne({ username });
 
   if (existingAdmin) {
-    throw new Error(`An admin with email ${email} already exists.`);
+    throw new Error(`An admin with username ${username} already exists.`);
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
 
   await Admin.create({
-    email,
     password: passwordHash,
     role: "SUPER_ADMIN",
     isActive: true,
   });
 
-  console.log(`Super admin created: ${email}`);
+  console.log(`Super admin created: ${username}`);
 }
 
 main()

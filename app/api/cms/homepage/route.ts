@@ -1,19 +1,13 @@
 import { NextResponse } from "next/server";
 import Homepage from "@/models/Homepage";
 import { connectDB } from "@/lib/mongodb";
+import { authorizeAdmin } from "@/lib/api-auth";
 
 export async function GET() {
   try {
     await connectDB();
 
-    let homepage = await Homepage.findOne();
-
-    if (!homepage) {
-      homepage = await Homepage.create({
-        hero: {},
-        sections: [],
-      });
-    }
+    const homepage = await Homepage.findOne();
 
     return NextResponse.json({
       success: true,
@@ -30,6 +24,9 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  const { response } = await authorizeAdmin();
+  if (response) return response;
+
   try {
     await connectDB();
 
@@ -98,6 +95,30 @@ export async function PUT(request: Request) {
     }
 
     await homepage.save();
+
+    const publicSiteUrl = process.env.PUBLIC_SITE_URL;
+    const revalidationSecret = process.env.REVALIDATION_SECRET;
+
+    if (publicSiteUrl && revalidationSecret) {
+      try {
+        const response = await fetch(`${publicSiteUrl}/api/revalidate`, {
+          method: "POST",
+          headers: {
+            "x-revalidation-secret": revalidationSecret,
+          },
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          console.error(
+            "Public homepage revalidation failed:",
+            response.status,
+          );
+        }
+      } catch (error) {
+        console.error("Could not contact public website:", error);
+      }
+    }
 
     return NextResponse.json({
       success: true,

@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import cloudinary from "@/lib/cloudinary";
 import Scholarship from "@/models/Scholarship";
+import { authorizeAdmin } from "@/lib/api-auth";
 
 interface RouteContext {
   params: Promise<{
@@ -13,6 +14,7 @@ interface RouteContext {
 
 export async function GET(_request: NextRequest, { params }: RouteContext) {
   try {
+    const { admin } = await authorizeAdmin();
     const { id } = await params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -24,7 +26,9 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 
     await connectDB();
 
-    const scholarship = await Scholarship.findById(id).lean();
+    const filter = admin ? { _id: id } : { _id: id, status: "published" };
+
+    const scholarship = await Scholarship.findOne(filter).lean();
 
     if (!scholarship) {
       return NextResponse.json(
@@ -48,6 +52,9 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 }
 
 export async function PATCH(request: NextRequest, { params }: RouteContext) {
+  const { response } = await authorizeAdmin();
+  if (response) return response;
+
   try {
     const { id } = await params;
 
@@ -173,6 +180,9 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 }
 
 export async function DELETE(_request: NextRequest, { params }: RouteContext) {
+  const { response } = await authorizeAdmin();
+  if (response) return response;
+
   try {
     const { id } = await params;
 

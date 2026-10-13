@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import Event from "@/models/Event";
 import { connectDB } from "@/lib/mongodb";
+import { authorizeAdmin } from "@/lib/api-auth";
 
 export async function GET() {
   try {
+    const { admin } = await authorizeAdmin();
     await connectDB();
 
-    const events = await Event.find().sort({ createdAt: -1 }).lean();
+    const filter = admin ? {} : { status: "published" };
+
+    const events = await Event.find(filter).sort({ createdAt: -1 }).lean();
 
     return NextResponse.json({
       success: true,
@@ -26,6 +30,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const { response } = await authorizeAdmin();
+  if (response) return response;
+
   try {
     await connectDB();
 
