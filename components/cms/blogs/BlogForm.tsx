@@ -6,6 +6,7 @@ import { Blog, BlogStatus } from "@/types/blog";
 import BlogImageUploader from "./BlogImageUploader";
 import type { UploadedMedia } from "@/services/media.service";
 import { toast } from "react-toastify";
+import { Star } from "lucide-react";
 
 interface BlogFormProps {
   blog: Blog | null;
@@ -80,6 +81,61 @@ export default function BlogForm({ blog, onCancel, onSuccess }: BlogFormProps) {
   const [categories, setCategories] = useState<BlogCategory[]>([]);
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const [categoryError, setCategoryError] = useState("");
+  const [featuredBlogToReplace, setFeaturedBlogToReplace] =
+    useState<Blog | null>(null);
+
+  const [showFeaturedConfirm, setShowFeaturedConfirm] = useState(false);
+  const [isCheckingFeatured, setIsCheckingFeatured] = useState(false);
+
+  const handleFeaturedChange = async (checked: boolean) => {
+    if (!checked) {
+      updateField("featured", false);
+      return;
+    }
+
+    if (blog?.featured) {
+      updateField("featured", true);
+      return;
+    }
+
+    try {
+      setIsCheckingFeatured(true);
+
+      const response = await fetch("/api/cms/blogs");
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message ?? "Failed to check featured blog");
+      }
+
+      if (!Array.isArray(result.data)) {
+        throw new Error("Unexpected response from the blogs API.");
+      }
+
+      const existingFeaturedBlog = (result.data as Blog[]).find(
+        (item) => item.featured && item._id !== blog?._id,
+      );
+
+      console.log({ existingFeaturedBlog });
+
+      if (existingFeaturedBlog) {
+        setFeaturedBlogToReplace(existingFeaturedBlog);
+        setShowFeaturedConfirm(true);
+        return;
+      }
+
+      updateField("featured", true);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to check featured blog";
+
+      toast.error(message);
+    } finally {
+      setIsCheckingFeatured(false);
+    }
+  };
 
   useEffect(() => {
     if (blog) {
@@ -510,8 +566,9 @@ export default function BlogForm({ blog, onCancel, onSuccess }: BlogFormProps) {
                 <input
                   type="checkbox"
                   checked={formData.featured}
-                  onChange={(e) => updateField("featured", e.target.checked)}
-                  className="h-4 w-4"
+                  disabled={isCheckingFeatured}
+                  onChange={(e) => handleFeaturedChange(e.target.checked)}
+                  className="h-4 w-4 accent-zinc-950 disabled:cursor-wait"
                 />
               </label>
             </div>
@@ -547,6 +604,103 @@ export default function BlogForm({ blog, onCancel, onSuccess }: BlogFormProps) {
           {isSubmitting ? "Saving..." : blog ? "Save Changes" : "Create Blog"}
         </button>
       </div>
+
+      {showFeaturedConfirm && featuredBlogToReplace && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowFeaturedConfirm(false);
+              setFeaturedBlogToReplace(null);
+            }
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="featured-confirm-title"
+            className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl"
+          >
+            <div className="p-6 sm:p-7">
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+                <Star size={20} />
+              </div>
+
+              <h2
+                id="featured-confirm-title"
+                className="text-xl font-semibold text-zinc-900"
+              >
+                A featured blog already exists
+              </h2>
+
+              <p className="mt-2 text-sm leading-6 text-zinc-600">
+                Do you want to replace the currently featured blog with this
+                one?
+              </p>
+
+              <div className="mt-5 overflow-hidden rounded-xl border border-zinc-200">
+                {(
+                  featuredBlogToReplace.cardImage ??
+                  featuredBlogToReplace.contentImage
+                )?.url && (
+                  <img
+                    src={
+                      (featuredBlogToReplace.cardImage ??
+                        featuredBlogToReplace.contentImage)!.url
+                    }
+                    alt={featuredBlogToReplace.title}
+                    className="h-44 w-full object-cover"
+                  />
+                )}
+
+                <div className="p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    Currently featured
+                  </p>
+
+                  <h3 className="mt-1 font-semibold text-zinc-900">
+                    {featuredBlogToReplace.title}
+                  </h3>
+
+                  <p className="mt-1 text-sm text-zinc-500">
+                    {featuredBlogToReplace.category}
+                  </p>
+                </div>
+              </div>
+
+              <p className="mt-4 text-sm text-zinc-600">
+                The new featured selection will take effect when you save this
+                blog.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3 border-t border-zinc-200 bg-zinc-50 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowFeaturedConfirm(false);
+                  setFeaturedBlogToReplace(null);
+                }}
+                className="cursor-pointer rounded-lg border border-zinc-200 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
+              >
+                No, cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  updateField("featured", true);
+                  setShowFeaturedConfirm(false);
+                  setFeaturedBlogToReplace(null);
+                }}
+                className="cursor-pointer rounded-lg bg-zinc-950 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800"
+              >
+                Yes, replace featured blog
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

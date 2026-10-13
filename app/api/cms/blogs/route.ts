@@ -83,6 +83,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (Boolean(featured)) {
+      await Blog.updateMany({ featured: true }, { $set: { featured: false } });
+    }
+
     const blog = await Blog.create({
       title: title.trim(),
       slug: normalizedSlug,

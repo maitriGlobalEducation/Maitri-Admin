@@ -137,6 +137,16 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       );
     }
 
+    if (Boolean(featured)) {
+      await Blog.updateMany(
+        {
+          featured: true,
+          _id: { $ne: existingBlog._id },
+        },
+        { $set: { featured: false } },
+      );
+    }
+
     existingBlog.title = title.trim();
     existingBlog.slug = normalizedSlug;
     existingBlog.category = category.trim();
