@@ -14,6 +14,7 @@ import type {
 } from "@/types/scholarship";
 
 import { uploadImage } from "@/services/media.service";
+import ScholarshipSingleImageUploader from "./ScholarshipSingleImageUploader";
 
 interface ScholarshipFormProps {
   scholarship: Scholarship | null;
@@ -70,18 +71,17 @@ export default function ScholarshipForm({
 }: ScholarshipFormProps) {
   const [formData, setFormData] = useState<FormData>(initialFormData);
 
-  const [images, setImages] = useState<{ url: string; publicId: string }[]>([]);
+  const [cardImage, setCardImage] = useState<ScholarshipImage | null>(null);
+  const [wallpaper, setWallpaper] = useState<ScholarshipImage | null>(null);
+  const [logo, setLogo] = useState<ScholarshipImage | null>(null);
 
-  const [cardImageIndex, setCardImageIndex] = useState(0);
+  const [uploadingImage, setUploadingImage] = useState<
+    "cardImage" | "wallpaper" | "logo" | null
+  >(null);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
-
   const [metaKeywordsInput, setMetaKeywordsInput] = useState("");
-
-  const [logo, setLogo] = useState<ScholarshipImage | null>(null);
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
-  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const isEditing = Boolean(scholarship);
 
@@ -127,10 +127,10 @@ export default function ScholarshipForm({
         applicationFields: scholarship.applicationForm?.fields ?? [],
       });
 
-      setLogo(scholarship.logo ?? null);
       setMetaKeywordsInput((scholarship.metaKeywords ?? []).join(", "));
-      setImages(uniqueImages);
-      setCardImageIndex(loadedCardImageIndex >= 0 ? loadedCardImageIndex : 0);
+      setCardImage(scholarship.cardImage ?? null);
+      setWallpaper(scholarship.wallpaper ?? null);
+      setLogo(scholarship.logo ?? null);
       setSubmitError("");
 
       return;
@@ -138,17 +138,11 @@ export default function ScholarshipForm({
 
     setFormData(initialFormData);
     setMetaKeywordsInput("");
-    setImages([]);
-    setCardImageIndex(0);
-    setSubmitError("");
+    setCardImage(null);
+    setWallpaper(null);
     setLogo(null);
+    setSubmitError("");
   }, [scholarship]);
-
-  const contentImageIndex = useMemo(() => {
-    if (images.length < 2) return 0;
-
-    return cardImageIndex === 0 ? 1 : 0;
-  }, [images.length, cardImageIndex]);
 
   const handleTitleChange = (value: string) => {
     setFormData((current) => ({
@@ -164,32 +158,43 @@ export default function ScholarshipForm({
     }));
   };
 
-  const handleLogoUpload = async (
+  const handleImageUpload = async (
     event: React.ChangeEvent<HTMLInputElement>,
+    imageType: "cardImage" | "wallpaper" | "logo",
   ) => {
     const file = event.target.files?.[0];
 
     if (!file) return;
 
+    const uploadPromise = uploadImage(file, "scholarships");
+
     try {
-      setIsUploadingLogo(true);
+      setUploadingImage(imageType);
 
-      const uploadedLogo = await uploadImage(file, "scholarships");
-      setLogo(uploadedLogo);
-    } catch (error) {
-      console.error("SCHOLARSHIP LOGO UPLOAD ERROR:", error);
+      const uploadedImage = await toast.promise(uploadPromise, {
+        pending: `Uploading ${imageType === "cardImage" ? "scholarship image" : imageType === "wallpaper" ? "scholarship wallpaper" : "institute logo"}...`,
+        success: "Image uploaded successfully!",
+        error: {
+          render({ data }) {
+            return data instanceof Error
+              ? data.message
+              : "Failed to upload image";
+          },
+        },
+      });
 
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to upload institute logo",
-      );
-    } finally {
-      setIsUploadingLogo(false);
-
-      if (logoInputRef.current) {
-        logoInputRef.current.value = "";
+      if (imageType === "cardImage") {
+        setCardImage(uploadedImage);
+      } else if (imageType === "wallpaper") {
+        setWallpaper(uploadedImage);
+      } else {
+        setLogo(uploadedImage);
       }
+    } catch (error) {
+      console.error(`SCHOLARSHIP ${imageType} UPLOAD ERROR:`, error);
+    } finally {
+      setUploadingImage(null);
+      event.target.value = "";
     }
   };
 
@@ -202,18 +207,12 @@ export default function ScholarshipForm({
       setIsSubmitting(true);
       setSubmitError("");
 
-      const cardImage = images.length > 0 ? images[cardImageIndex] : null;
-
-      const contentImage =
-        images.length > 1 ? images[contentImageIndex] : (images[0] ?? null);
-
       const metaKeywords = [
         ...new Set(
           metaKeywordsInput
             .split(",")
-            .map((keyword) => keyword.trim())
-            .filter(Boolean)
-            .map((keyword) => keyword.toLowerCase()),
+            .map((keyword) => keyword.trim().toLowerCase())
+            .filter(Boolean),
         ),
       ];
 
@@ -222,13 +221,12 @@ export default function ScholarshipForm({
         slug: formData.slug,
         description: formData.description,
         amount: formData.amount.trim() || null,
-        logo,
-
-        deadline: formData.deadline || null,
 
         cardImage,
-        contentImage,
+        logo,
+        wallpaper,
 
+        deadline: formData.deadline || null,
         content: formData.content,
 
         applicationForm: {
@@ -252,34 +250,50 @@ export default function ScholarshipForm({
 
       const method = isEditing ? "PATCH" : "POST";
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const savePromise = (async () => {
+        const response = await fetch(url, {
+          method,
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
 
-      const result = await response.json();
+        const result = await response.json();
 
-      if (!response.ok || !result.success) {
-        throw new Error(
-          result.message ??
-            (isEditing
-              ? "Failed to update scholarship"
-              : "Failed to create scholarship"),
-        );
-      }
+        if (!response.ok || !result.success) {
+          throw new Error(
+            result.message ??
+              (isEditing
+                ? "Failed to update scholarship"
+                : "Failed to create scholarship"),
+          );
+        }
 
-      toast.success(
-        isEditing
+        return result;
+      })();
+
+      await toast.promise(savePromise, {
+        pending: isEditing
+          ? "Updating scholarship..."
+          : "Creating scholarship...",
+        success: isEditing
           ? "Scholarship updated successfully"
           : "Scholarship created successfully",
-      );
+        error: {
+          render({ data }) {
+            return data instanceof Error
+              ? data.message
+              : "Failed to save scholarship";
+          },
+        },
+      });
 
       setFormData(initialFormData);
-      setImages([]);
+      setCardImage(null);
+      setWallpaper(null);
       setLogo(null);
+
       onSuccess();
     } catch (error) {
       console.error(
@@ -295,7 +309,6 @@ export default function ScholarshipForm({
             : "Failed to create scholarship";
 
       setSubmitError(message);
-      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -416,103 +429,42 @@ export default function ScholarshipForm({
           </div>
         </section>
 
-        {/* Images */}
-        <section>
-          <div className="mb-5">
+        <section className="space-y-6">
+          <div>
             <h2 className="text-base font-semibold text-zinc-900">
               Scholarship Images
             </h2>
-
             <p className="mt-1 text-sm text-zinc-500">
-              Upload one image to use everywhere, or two images to control the
-              card and detail-page images separately.
+              Manage the card image and detail-page wallpaper independently.
             </p>
           </div>
 
-          <ScholarshipImageUploader
-            images={images}
-            cardImageIndex={cardImageIndex}
-            onImagesChange={setImages}
-            onCardImageIndexChange={setCardImageIndex}
-          />
-        </section>
-
-        {/* Institute Logo */}
-        <section>
-          <div className="mb-5">
-            <h2 className="text-base font-semibold text-zinc-900">
-              Institute Logo
-            </h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              Upload the logo of the university or institute providing this
-              scholarship.
-            </p>
-          </div>
-
-          <input
-            ref={logoInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleLogoUpload}
-            className="hidden"
+          <ScholarshipSingleImageUploader
+            label="Scholarship image"
+            description="Displayed on scholarship cards and listing pages."
+            image={cardImage}
+            uploading={uploadingImage === "cardImage"}
+            onUpload={(event) => handleImageUpload(event, "cardImage")}
+            onRemove={() => setCardImage(null)}
           />
 
-          {logo ? (
-            <div className="flex items-center gap-4 rounded-xl border border-zinc-200 p-4">
-              <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border border-zinc-100 bg-white p-2">
-                <img
-                  src={logo.url}
-                  alt="Institute logo"
-                  className="max-h-full max-w-full object-contain"
-                />
-              </div>
+          <ScholarshipSingleImageUploader
+            label="Scholarship wallpaper"
+            description="Used as the wallpaper on the scholarship detail page."
+            image={wallpaper}
+            uploading={uploadingImage === "wallpaper"}
+            onUpload={(event) => handleImageUpload(event, "wallpaper")}
+            onRemove={() => setWallpaper(null)}
+          />
 
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-zinc-800">
-                  Institute logo uploaded
-                </p>
-                <p className="mt-1 text-xs text-zinc-500">
-                  This logo is stored separately from the scholarship images.
-                </p>
-
-                <div className="mt-3 flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={() => logoInputRef.current?.click()}
-                    disabled={isUploadingLogo}
-                    className="cursor-pointer text-sm font-medium text-zinc-700 hover:text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {isUploadingLogo ? "Uploading..." : "Replace logo"}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setLogo(null)}
-                    disabled={isUploadingLogo}
-                    className="cursor-pointer text-sm font-medium text-red-600 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Remove logo
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => logoInputRef.current?.click()}
-              disabled={isUploadingLogo}
-              className="flex h-36 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-zinc-200 bg-zinc-50 transition hover:border-zinc-300 hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <span className="text-sm font-medium text-zinc-700">
-                {isUploadingLogo
-                  ? "Uploading logo..."
-                  : "Upload institute logo"}
-              </span>
-              <span className="mt-1 text-xs text-zinc-400">
-                JPG, PNG or WebP
-              </span>
-            </button>
-          )}
+          <ScholarshipSingleImageUploader
+            label="Institute logo"
+            description="The logo of the university or institute providing the scholarship."
+            image={logo}
+            uploading={uploadingImage === "logo"}
+            onUpload={(event) => handleImageUpload(event, "logo")}
+            onRemove={() => setLogo(null)}
+          />
         </section>
 
         {/* Content */}

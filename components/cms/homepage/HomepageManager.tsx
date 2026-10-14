@@ -11,7 +11,6 @@ import HomepageHeroForm from "./HomepageHeroForm";
 import HomepageLocationsForm from "./HomepageLocationsForm";
 import type { HomepageLocationsContent } from "@/types/homepage";
 import UniversityManager from "@/components/cms/universities/UniversityManager";
-import type { HomepageAdmissionsContent } from "@/types/homepage";
 import HomepageSectionCard from "./HomepageSectionCard";
 import HomepageCareerChoicesForm from "./HomepageCareerChoicesForm";
 import type { HomepageCareerChoicesContent } from "@/types/homepage";
@@ -467,7 +466,7 @@ export default function HomepageManager() {
           More homepage sections
         </h2>
         <p className="mt-1 text-sm text-zinc-500">
-          We'll add the next sections here as we work through your homepage.
+          We'll add the next sections here as we work through the homepage.
         </p>
       </div>
     </div>

@@ -47,11 +47,11 @@ const cmsSections = [
         href: "/cms/scholarships",
         icon: GraduationCap,
       },
-      {
-        label: "Scholarship Categories",
-        href: "/cms/scholarship-categories",
-        icon: FolderOpen,
-      },
+      // {
+      //   label: "Scholarship Categories",
+      //   href: "/cms/scholarship-categories",
+      //   icon: FolderOpen,
+      // },
     ],
   },
   {

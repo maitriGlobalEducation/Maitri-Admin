@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
       logo,
       slug,
       cardImage,
-      contentImage,
+      wallpaper,
       deadline,
       content,
       applicationForm,
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
       slug: normalizedSlug,
 
       cardImage: cardImage ?? null,
-      contentImage: contentImage ?? null,
+      wallpaper: wallpaper ?? null,
 
       deadline: deadline ? new Date(deadline) : null,
       content,

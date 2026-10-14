@@ -60,23 +60,34 @@ export default function ScholarshipsManager() {
     try {
       setIsDeleting(true);
 
-      const response = await fetch(
-        `/api/cms/scholarships/${scholarshipToDelete._id}`,
-        {
-          method: "DELETE",
+      const deletePromise = (async () => {
+        const response = await fetch(
+          `/api/cms/scholarships/${scholarshipToDelete._id}`,
+          { method: "DELETE" },
+        );
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.message ?? "Failed to delete scholarship");
+        }
+
+        return result;
+      })();
+
+      await toast.promise(deletePromise, {
+        pending: "Deleting scholarship...",
+        success: "Scholarship removed",
+        error: {
+          render({ data }) {
+            return data instanceof Error
+              ? data.message
+              : "Failed to delete scholarship";
+          },
         },
-      );
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.message ?? "Failed to delete scholarship");
-      }
-
-      toast.success("Scholarship removed");
+      });
 
       setScholarshipToDelete(null);
-
       await fetchScholarships();
     } catch (error) {
       console.error("DELETE SCHOLARSHIP ERROR:", error);

@@ -76,7 +76,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       logo,
       slug,
       cardImage,
-      contentImage,
+      wallpaper,
       deadline,
       content,
       applicationForm,
@@ -137,7 +137,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         slug: normalizedSlug,
 
         cardImage: cardImage ?? null,
-        contentImage: contentImage ?? null,
+        wallpaper: wallpaper ?? null,
 
         deadline: deadline ? new Date(deadline) : null,
         content,
@@ -206,8 +206,9 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
 
     const publicIds = [
       scholarship.cardImage?.publicId,
-      scholarship.contentImage?.publicId,
+      scholarship.wallpaper?.publicId,
       scholarship.logo?.publicId,
+      scholarship.contentImage?.publicId,
     ].filter(Boolean);
 
     const uniquePublicIds = [...new Set(publicIds)];

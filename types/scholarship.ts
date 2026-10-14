@@ -33,8 +33,9 @@ export interface Scholarship {
   amount: string | null;
   slug: string;
 
-  logo: ScholarshipImage | null;
   cardImage: ScholarshipImage | null;
+  logo: ScholarshipImage | null;
+  wallpaper: ScholarshipImage | null;
   contentImage: ScholarshipImage | null;
 
   deadline: string | null;

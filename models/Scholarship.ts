@@ -70,11 +70,6 @@ const ScholarshipSchema = new Schema(
       default: null,
     },
 
-    logo: {
-      type: ScholarshipImageSchema,
-      default: null,
-    },
-
     slug: {
       type: String,
       required: true,
@@ -83,12 +78,20 @@ const ScholarshipSchema = new Schema(
       trim: true,
     },
 
+    // Scholarship card image
     cardImage: {
       type: ScholarshipImageSchema,
       default: null,
     },
 
-    contentImage: {
+    // University or institute logo
+    logo: {
+      type: ScholarshipImageSchema,
+      default: null,
+    },
+
+    // Wallpaper displayed on the scholarship detail page
+    wallpaper: {
       type: ScholarshipImageSchema,
       default: null,
     },
@@ -120,7 +123,6 @@ const ScholarshipSchema = new Schema(
       trim: true,
     },
 
-    // SEO
     metaTitle: {
       type: String,
       default: "",
