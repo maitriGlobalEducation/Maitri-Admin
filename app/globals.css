@@ -26,9 +26,7 @@
    font-family: var(--font-geist-sans) !important;
  }
 
- /* ========================================
-   TIPTAP BLOG EDITOR
-======================================== */
+ /* TIPTAP BLOG EDITOR */
 
  .blog-editor.ProseMirror {
    min-height: 20rem;
