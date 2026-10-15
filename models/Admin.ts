@@ -21,7 +21,7 @@ const AdminSchema = new Schema<IAdmin>(
       trim: true,
       minlength: 3,
       maxlength: 30,
-      match: /^[a-z0-9._-]+$/,
+      match: /^[a-z0-9.@_-]+$/,
     },
     password: {
       type: String,

@@ -88,7 +88,7 @@ export async function POST(request: Request) {
     const role = data.role;
 
     if (
-      !/^[a-z0-9._-]{3,30}$/.test(username) ||
+      !/^[a-z0-9.@_-]{3,30}$/.test(username) ||
       password.length < 8 ||
       password.length > 128 ||
       typeof role !== "string" ||
