@@ -18,6 +18,7 @@ import {
   FileText,
   GraduationCap,
   Calendar,
+  ShieldCheck,
 } from "lucide-react";
 
 const cmsSections = [
@@ -47,11 +48,6 @@ const cmsSections = [
         href: "/cms/scholarships",
         icon: GraduationCap,
       },
-      // {
-      //   label: "Scholarship Categories",
-      //   href: "/cms/scholarship-categories",
-      //   icon: FolderOpen,
-      // },
     ],
   },
   {
@@ -282,15 +278,21 @@ export default function AdminSidebar() {
           </div>
         </div>
 
-        <div className="mt-7">
-          <Link
-            href="/settings"
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
-          >
-            <Settings size={18} />
-            Settings
-          </Link>
-        </div>
+        {admin?.role === "SUPER_ADMIN" && (
+          <div className="mt-7">
+            <Link
+              href="/cms/admin"
+              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
+                pathname === "/cms/admin"
+                  ? "bg-zinc-100 font-medium text-zinc-950"
+                  : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
+              }`}
+            >
+              <ShieldCheck size={18} />
+              Admin
+            </Link>
+          </div>
+        )}
       </div>
 
       <div className="shrink-0 border-t border-zinc-200 p-3">

@@ -1,4 +1,4 @@
-export async function revalidatePublicHomepage(): Promise<void> {
+export async function revalidatePublicpage(): Promise<void> {
   const publicSiteUrl = process.env.PUBLIC_SITE_URL;
   const secret = process.env.REVALIDATION_SECRET;
 

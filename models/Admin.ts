@@ -1,6 +1,6 @@
 import mongoose, { Schema, type Model } from "mongoose";
 
-export type AdminRole = "SUPER_ADMIN" | "ADMIN" | "EDITOR";
+export type AdminRole = "COUNSELLOR" | "EDITOR" | "MANAGER" | "SUPER_ADMIN";
 
 export interface IAdmin {
   username: string;
@@ -30,7 +30,7 @@ const AdminSchema = new Schema<IAdmin>(
     },
     role: {
       type: String,
-      enum: ["SUPER_ADMIN", "ADMIN", "EDITOR"],
+      enum: ["COUNSELLOR", "EDITOR", "MANAGER", "SUPER_ADMIN"],
       default: "EDITOR",
       required: true,
     },
@@ -43,6 +43,7 @@ const AdminSchema = new Schema<IAdmin>(
 );
 
 const Admin: Model<IAdmin> =
-  mongoose.models.Admin || mongoose.model<IAdmin>("Admin", AdminSchema);
+  (mongoose.models.Admin as Model<IAdmin> | undefined) ??
+  mongoose.model<IAdmin>("Admin", AdminSchema);
 
 export default Admin;

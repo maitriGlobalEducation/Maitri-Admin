@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Testimonial from "@/models/Testimonial";
 import { connectDB } from "@/lib/mongodb";
 import { authorizeAdmin } from "@/lib/api-auth";
+import { revalidatePublicpage } from "@/services/revalidation.service";
 
 export async function GET() {
   try {
@@ -86,6 +87,8 @@ export async function POST(request: NextRequest) {
       image: image ?? null,
       testimonial: testimonial.trim(),
     });
+
+    await revalidatePublicpage();
 
     return NextResponse.json(
       {

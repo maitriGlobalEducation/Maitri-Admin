@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import University from "@/models/University";
 import { connectDB } from "@/lib/mongodb";
 import { authorizeAdmin } from "@/lib/api-auth";
-import { revalidatePublicHomepage } from "@/services/revalidation.service";
+import { revalidatePublicpage } from "@/services/revalidation.service";
 
 export async function GET() {
   try {
@@ -107,7 +107,7 @@ export async function POST(request: Request) {
       status,
     });
 
-    await revalidatePublicHomepage();
+    await revalidatePublicpage();
 
     return NextResponse.json(
       {

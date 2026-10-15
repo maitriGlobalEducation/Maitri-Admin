@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Scholarship from "@/models/Scholarship";
 import { authorizeAdmin } from "@/lib/api-auth";
+import { revalidatePublicpage } from "@/services/revalidation.service";
 
 export async function GET() {
   try {
@@ -132,6 +133,8 @@ export async function POST(request: NextRequest) {
 
       status: status ?? "draft",
     });
+
+    await revalidatePublicpage();
 
     return NextResponse.json(
       {

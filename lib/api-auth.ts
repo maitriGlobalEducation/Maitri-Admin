@@ -3,7 +3,12 @@ import { getAuthenticatedAdmin } from "@/lib/auth";
 import type { AdminRole } from "@/models/Admin";
 
 export async function authorizeAdmin(
-  allowedRoles: AdminRole[] = ["SUPER_ADMIN", "ADMIN", "EDITOR"],
+  allowedRoles: AdminRole[] = [
+    "COUNSELLOR",
+    "EDITOR",
+    "MANAGER",
+    "SUPER_ADMIN",
+  ],
 ) {
   const admin = await getAuthenticatedAdmin();
 

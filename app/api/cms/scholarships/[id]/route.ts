@@ -5,6 +5,7 @@ import { connectDB } from "@/lib/mongodb";
 import cloudinary from "@/lib/cloudinary";
 import Scholarship from "@/models/Scholarship";
 import { authorizeAdmin } from "@/lib/api-auth";
+import { revalidatePublicpage } from "@/services/revalidation.service";
 
 interface RouteContext {
   params: Promise<{
@@ -165,6 +166,8 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       );
     }
 
+    await revalidatePublicpage();
+
     return NextResponse.json({
       success: true,
       data: scholarship,
@@ -224,6 +227,8 @@ export async function DELETE(_request: NextRequest, { params }: RouteContext) {
     }
 
     await scholarship.deleteOne();
+
+    await revalidatePublicpage();
 
     return NextResponse.json({
       success: true,

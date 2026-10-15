@@ -76,10 +76,11 @@ export default function TestimonialForm({
     if (isSubmitting) return;
 
     const isEditing = Boolean(testimonial);
-    try {
-      setIsSubmitting(true);
-      setSubmitError("");
 
+    setIsSubmitting(true);
+    setSubmitError("");
+
+    const request = async () => {
       const url = isEditing
         ? `/api/cms/testimonials/${testimonial!._id}`
         : "/api/cms/testimonials";
@@ -105,14 +106,29 @@ export default function TestimonialForm({
         );
       }
 
-      toast.success(
-        isEditing
+      return result;
+    };
+
+    try {
+      await toast.promise(request(), {
+        pending: isEditing
+          ? "Updating testimonial..."
+          : "Creating testimonial...",
+        success: isEditing
           ? "Testimonial updated successfully"
           : "Testimonial created successfully",
-      );
+        error: {
+          render({ data }) {
+            return data instanceof Error
+              ? data.message
+              : isEditing
+                ? "Failed to update testimonial"
+                : "Failed to create testimonial";
+          },
+        },
+      });
 
       setFormData(initialFormData);
-
       onSuccess();
     } catch (error) {
       console.error(
@@ -120,15 +136,13 @@ export default function TestimonialForm({
         error,
       );
 
-      const message =
+      setSubmitError(
         error instanceof Error
           ? error.message
           : isEditing
             ? "Failed to update testimonial"
-            : "Failed to create testimonial";
-
-      setSubmitError(message);
-      toast.error(message);
+            : "Failed to create testimonial",
+      );
     } finally {
       setIsSubmitting(false);
     }

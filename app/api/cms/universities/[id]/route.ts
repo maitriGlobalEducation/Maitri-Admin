@@ -3,7 +3,7 @@ import { isValidObjectId } from "mongoose";
 import University from "@/models/University";
 import { connectDB } from "@/lib/mongodb";
 import { authorizeAdmin } from "@/lib/api-auth";
-import { revalidatePublicHomepage } from "@/services/revalidation.service";
+import { revalidatePublicpage } from "@/services/revalidation.service";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -185,7 +185,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       );
     }
 
-    await revalidatePublicHomepage();
+    await revalidatePublicpage();
 
     return NextResponse.json({
       success: true,
@@ -226,7 +226,7 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
       );
     }
 
-    await revalidatePublicHomepage();
+    await revalidatePublicpage();
 
     return NextResponse.json({
       success: true,

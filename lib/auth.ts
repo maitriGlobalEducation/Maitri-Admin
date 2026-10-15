@@ -56,9 +56,17 @@ export async function getSession(): Promise<AdminSession | null> {
   try {
     const { payload } = await jwtVerify(token, getSecret());
 
+    const VALID_ADMIN_ROLES: AdminRole[] = [
+      "COUNSELLOR",
+      "EDITOR",
+      "MANAGER",
+      "SUPER_ADMIN",
+    ];
+
     if (
       typeof payload.sub !== "string" ||
-      !["SUPER_ADMIN", "ADMIN", "EDITOR"].includes(payload.role as string)
+      typeof payload.role !== "string" ||
+      !VALID_ADMIN_ROLES.includes(payload.role as AdminRole)
     ) {
       return null;
     }

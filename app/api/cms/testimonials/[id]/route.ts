@@ -5,6 +5,7 @@ import { connectDB } from "@/lib/mongodb";
 import Testimonial from "@/models/Testimonial";
 import cloudinary from "@/lib/cloudinary";
 import { authorizeAdmin } from "@/lib/api-auth";
+import { revalidatePublicpage } from "@/services/revalidation.service";
 
 interface RouteContext {
   params: Promise<{
@@ -95,6 +96,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     await existingTestimonial.save();
 
+    await revalidatePublicpage();
+
     return NextResponse.json({
       success: true,
       message: "Testimonial updated successfully",
@@ -156,6 +159,8 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
         console.error("CLOUDINARY TESTIMONIAL IMAGE DELETE ERROR:", error);
       }
     }
+
+    await revalidatePublicpage();
 
     return NextResponse.json({
       success: true,
