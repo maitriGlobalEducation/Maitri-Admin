@@ -106,7 +106,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     const password = data.password;
 
     if (
-      !/^[a-z0-9._-]{3,30}$/.test(username) ||
+      !/^[a-z0-9.@_-]{3,30}$/.test(username) ||
       typeof role !== "string" ||
       !roles.includes(role as AdminRole) ||
       typeof isActive !== "boolean" ||
