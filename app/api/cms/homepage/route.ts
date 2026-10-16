@@ -4,10 +4,21 @@ import { connectDB } from "@/lib/mongodb";
 import { authorizeAdmin } from "@/lib/api-auth";
 
 export async function GET() {
+  const startedAt = performance.now();
+
+  const { response } = await authorizeAdmin();
+  if (response) return response;
+
   try {
     await connectDB();
 
-    const homepage = await Homepage.findOne();
+    const homepage = await Homepage.findOne().lean();
+
+    console.info(
+      `[CMS Homepage GET] Completed in ${Math.round(
+        performance.now() - startedAt,
+      )}ms`,
+    );
 
     return NextResponse.json({
       success: true,

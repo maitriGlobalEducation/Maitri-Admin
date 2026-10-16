@@ -19,6 +19,7 @@ import {
   Calendar,
   ShieldCheck,
 } from "lucide-react";
+import { AdminRole } from "@/models/Admin";
 
 const cmsSections = [
   {
@@ -71,43 +72,20 @@ const cmsSections = [
 interface CurrentAdmin {
   id: string;
   username: string;
-  role: "SUPER_ADMIN" | "ADMIN" | "EDITOR";
+  role: AdminRole;
 }
 
-export default function AdminSidebar() {
+interface AdminSidebarProps {
+  admin: CurrentAdmin;
+}
+
+export default function AdminSidebar({ admin }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const [admin, setAdmin] = useState<CurrentAdmin | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
   const [openSections, setOpenSections] = useState<string[]>([]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function fetchCurrentAdmin() {
-      try {
-        const response = await fetch("/api/auth/me");
-
-        if (!response.ok) return;
-
-        const result = await response.json();
-
-        if (!cancelled && result.success && result.admin) {
-          setAdmin(result.admin);
-        }
-      } catch (error) {
-        console.error("Failed to fetch current admin:", error);
-      }
-    }
-
-    void fetchCurrentAdmin();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const isActive = (href: string) => pathname === href;
 

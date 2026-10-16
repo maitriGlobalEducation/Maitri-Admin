@@ -395,7 +395,53 @@ export default function HomepageManager() {
   };
 
   if (isLoading) {
-    return <p className="text-sm text-zinc-500">Loading homepage...</p>;
+    return (
+      <div className="space-y-5 animate-pulse">
+        {/* Page heading */}
+        <div className="space-y-2">
+          <div className="h-7 w-56 rounded-md bg-zinc-200" />
+          <div className="h-4 w-80 max-w-full rounded-md bg-zinc-100" />
+        </div>
+
+        {/* Section cards */}
+        <div className="space-y-4">
+          {[
+            "SEO Settings",
+            "Hero Section",
+            "About Section",
+            "Locations Section",
+            "Universities Section",
+            "Career Choices Section",
+          ].map((section) => (
+            <div
+              key={section}
+              className="overflow-hidden rounded-xl border border-zinc-200 bg-white"
+            >
+              <div className="flex items-center justify-between gap-4 p-5">
+                <div className="flex min-w-0 items-center gap-4">
+                  {/* Section icon */}
+                  <div className="size-11 shrink-0 rounded-lg bg-zinc-200" />
+
+                  {/* Section title and description */}
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="h-4 w-36 max-w-full rounded bg-zinc-200" />
+                    <div className="h-3 w-56 max-w-full rounded bg-zinc-100" />
+                  </div>
+                </div>
+
+                {/* Chevron placeholder */}
+                <div className="size-5 shrink-0 rounded bg-zinc-100" />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Save button placeholder */}
+        <div className="flex justify-end pt-2">
+          <div className="h-11 w-36 rounded-lg bg-zinc-200" />
+        </div>
+      </div>
+    );
   }
 
   if (!homepage) {
