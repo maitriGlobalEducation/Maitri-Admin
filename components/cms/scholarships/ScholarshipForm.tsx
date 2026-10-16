@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
-import ScholarshipImageUploader from "./ScholarshipImageUploader";
 import ScholarshipApplicationFormBuilder from "./ScholarshipApplicationFormBuilder";
 import BlogEditor from "@/components/cms/blogs/BlogEditor";
 

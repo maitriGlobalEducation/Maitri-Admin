@@ -11,9 +11,10 @@ import EventForm from "./EventForm";
 export default function EventsManager() {
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const [showForm, setShowForm] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
 
   const fetchEvents = async () => {
     try {
@@ -36,12 +37,12 @@ export default function EventsManager() {
 
   const handleCreate = () => {
     setSelectedEvent(null);
-    setShowForm(true);
+    // setShowForm(true);
   };
 
   const handleEdit = (event: Event) => {
     setSelectedEvent(event);
-    setShowForm(true);
+    // setShowForm(true);
     window.scrollTo({
       top: 0,
       behavior: "smooth",
@@ -49,14 +50,8 @@ export default function EventsManager() {
   };
 
   const handleDelete = async (id: string) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this event?",
-    );
-
-    if (!confirmed) return;
-
     try {
-      setDeletingId(id);
+      setIsDeleting(true);
 
       const response = await fetch(`/api/cms/events/${id}`, {
         method: "DELETE",
@@ -74,7 +69,7 @@ export default function EventsManager() {
 
       if (selectedEvent?._id === id) {
         setSelectedEvent(null);
-        setShowForm(false);
+        setEventToDelete(null);
       }
     } catch (error) {
       console.error(error);
@@ -84,18 +79,20 @@ export default function EventsManager() {
       );
     } finally {
       setDeletingId(null);
+      setIsDeleting(false);
+      setEventToDelete(null);
     }
   };
 
   const handleSuccess = async () => {
-    setShowForm(false);
+    // setShowForm(false);
     setSelectedEvent(null);
 
     await fetchEvents();
   };
 
   const handleCancel = () => {
-    setShowForm(false);
+    // setShowForm(false);
     setSelectedEvent(null);
   };
 
@@ -262,7 +259,7 @@ export default function EventsManager() {
 
                         <button
                           type="button"
-                          onClick={() => handleDelete(event._id)}
+                          onClick={() => setEventToDelete(event)}
                           disabled={deletingId === event._id}
                           className="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                         >
@@ -277,6 +274,51 @@ export default function EventsManager() {
           </div>
         )}
       </div>
+
+      {eventToDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setEventToDelete(null);
+            }
+          }}
+        >
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-zinc-900">
+              Delete Event?
+            </h3>
+
+            <p className="mt-2 text-sm leading-6 text-zinc-500">
+              This will permanently delete{" "}
+              <span className="font-medium text-zinc-700">
+                {eventToDelete.title}
+              </span>{" "}
+              and its uploaded images.
+            </p>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setEventToDelete(null)}
+                disabled={isDeleting}
+                className="h-10 cursor-pointer rounded-lg border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleDelete(eventToDelete._id)}
+                disabled={isDeleting}
+                className="h-10 cursor-pointer rounded-lg bg-red-600 px-4 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

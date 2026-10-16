@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
 import type { Event, EventRegistrationField } from "@/types/event";
@@ -11,6 +11,8 @@ import EventRegistrationFormBuilder, {
 } from "./EventRegistrationFormBuilder";
 
 import BlogEditor from "@/components/cms/blogs/BlogEditor";
+import { EVENT_TIMEZONES } from "@/lib/event-time";
+import TimezoneSelect from "@/components/Common Components/TimezoneSelect";
 
 interface EventFormProps {
   event: Event | null;
@@ -21,14 +23,14 @@ interface EventFormProps {
 interface FormData {
   title: string;
   slug: string;
-
+  category: string;
   eventDate: string;
   eventTime: string;
 
   content: Record<string, unknown>;
 
   registrationFields: EventRegistrationField[];
-
+  eventTimezone: string;
   metaTitle: string;
   metaDescription: string;
   metaKeywords: string[];
@@ -40,7 +42,7 @@ interface FormData {
 const initialFormData: FormData = {
   title: "",
   slug: "",
-
+  category: "",
   eventDate: "",
   eventTime: "",
 
@@ -54,7 +56,7 @@ const initialFormData: FormData = {
   },
 
   registrationFields: defaultFields,
-
+  eventTimezone: "",
   metaTitle: "",
   metaDescription: "",
   metaKeywords: [],
@@ -62,6 +64,11 @@ const initialFormData: FormData = {
 
   status: "draft",
 };
+interface EventCategoryOption {
+  _id: string;
+  name: string;
+  slug: string;
+}
 
 export default function EventForm({
   event,
@@ -70,6 +77,9 @@ export default function EventForm({
 }: EventFormProps) {
   const [formData, setFormData] = useState<FormData>(initialFormData);
 
+  const [categories, setCategories] = useState<EventCategoryOption[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+  const [categoryError, setCategoryError] = useState("");
   const [images, setImages] = useState<{ url: string; publicId: string }[]>([]);
 
   const [cardImageIndex, setCardImageIndex] = useState(0);
@@ -82,6 +92,37 @@ export default function EventForm({
   const isEditing = Boolean(event);
 
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
+
+  const fetchCategories = useCallback(async () => {
+    setIsLoadingCategories(true);
+    setCategoryError("");
+
+    try {
+      const response = await fetch("/api/cms/event-categories", {
+        cache: "no-store",
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message ?? "Failed to load event categories.");
+      }
+
+      setCategories(result.categories ?? []);
+    } catch (error) {
+      setCategoryError(
+        error instanceof Error
+          ? error.message
+          : "Failed to load event categories.",
+      );
+    } finally {
+      setIsLoadingCategories(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchCategories();
+  }, [fetchCategories]);
 
   useEffect(() => {
     if (event) {
@@ -107,10 +148,10 @@ export default function EventForm({
       setFormData({
         title: event.title,
         slug: event.slug,
-
+        category: event.category ?? "",
         eventDate: event.eventDate ? event.eventDate.slice(0, 10) : "",
-
         eventTime: event.eventTime ?? "",
+        eventTimezone: event.eventTimezone ?? "",
 
         content: event.content,
 
@@ -196,9 +237,10 @@ export default function EventForm({
       const payload = {
         title: formData.title,
         slug: formData.slug,
-
+        category: formData.category,
         eventDate: formData.eventDate || null,
         eventTime: formData.eventTime,
+        eventTimezone: formData.eventTimezone,
 
         cardImage,
         contentImage,
@@ -310,8 +352,8 @@ export default function EventForm({
               />
             </div>
 
-            <div className="grid gap-5 md:grid-cols-3">
-              <div className="md:col-span-1">
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+              <div>
                 <label className="mb-1.5 block text-sm font-medium text-zinc-700">
                   Slug
                 </label>
@@ -321,7 +363,6 @@ export default function EventForm({
                   value={formData.slug}
                   onChange={(event) => {
                     setIsSlugManuallyEdited(true);
-
                     setFormData((current) => ({
                       ...current,
                       slug: event.target.value,
@@ -370,6 +411,90 @@ export default function EventForm({
                   required
                 />
               </div>
+
+              <TimezoneSelect
+                label="Event Timezone"
+                name="eventTimezone"
+                value={formData.eventTimezone}
+                options={EVENT_TIMEZONES}
+                onChange={(eventTimezone) =>
+                  setFormData((current) => ({
+                    ...current,
+                    eventTimezone,
+                  }))
+                }
+                required
+                placeholder="Select event timezone"
+              />
+
+              {formData.eventTimezone && (
+                <p className="mt-3 text-sm text-zinc-500">
+                  The event is scheduled for{" "}
+                  <span className="font-medium text-zinc-800">
+                    {formData.eventTime || "--:--"}
+                  </span>{" "}
+                  on{" "}
+                  <span className="font-medium text-zinc-800">
+                    {formData.eventDate || "no date selected"}
+                  </span>{" "}
+                  in{" "}
+                  <span className="font-medium text-zinc-800">
+                    {formData.eventTimezone} Timezone
+                  </span>
+                  .
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label
+                htmlFor="event-category"
+                className="mb-1.5 block text-sm font-medium text-zinc-700"
+              >
+                Event Category
+              </label>
+
+              <select
+                id="event-category"
+                value={formData.category}
+                onChange={(event) =>
+                  setFormData((current) => ({
+                    ...current,
+                    category: event.target.value,
+                  }))
+                }
+                disabled={isLoadingCategories || categories.length === 0}
+                className="h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-zinc-400 disabled:cursor-not-allowed disabled:bg-zinc-50"
+                required
+              >
+                <option value="">
+                  {isLoadingCategories
+                    ? "Loading categories..."
+                    : categories.length === 0
+                      ? "No categories available"
+                      : "Select event category"}
+                </option>
+
+                {categories.map((category) => (
+                  <option key={category._id} value={category.name}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+
+              {categoryError && (
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  <p className="text-xs text-red-600">{categoryError}</p>
+
+                  <button
+                    type="button"
+                    onClick={() => void fetchCategories()}
+                    className="cursor-pointer text-xs font-medium text-blue-600 hover:text-blue-700"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </section>

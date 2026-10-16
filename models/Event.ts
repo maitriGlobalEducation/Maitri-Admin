@@ -68,15 +68,32 @@ const EventSchema = new Schema(
       trim: true,
     },
 
+    category: {
+      type: String,
+      ref: "EventCategory",
+    },
+
     eventDate: {
-      type: Date,
+      type: String, // Local date: YYYY-MM-DD
       required: true,
+      trim: true,
     },
 
     eventTime: {
-      type: String,
+      type: String, // Local time: HH:mm
       required: true,
       trim: true,
+    },
+
+    eventTimezone: {
+      type: String, // IANA timezone, e.g. Europe/Rome
+      required: true,
+      trim: true,
+    },
+
+    eventStartsAt: {
+      type: Date, // Actual instant stored in UTC
+      required: true,
     },
 
     cardImage: {

@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 interface Props {
   number: string;
   title: string;
   description: string;
-  defaultOpen?: boolean;
+  isOpen: boolean;
+  onToggle: () => void;
   children: React.ReactNode;
   isDirty?: boolean;
 }
@@ -16,12 +16,11 @@ export default function HomepageSectionCard({
   number,
   title,
   description,
-  defaultOpen = false,
+  isOpen,
+  onToggle,
   children,
   isDirty = false,
 }: Props) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
   return (
     <section
       className={`overflow-hidden rounded-xl border shadow-sm transition-all duration-200 ${
@@ -30,7 +29,7 @@ export default function HomepageSectionCard({
     >
       <button
         type="button"
-        onClick={() => setIsOpen((current) => !current)}
+        onClick={onToggle}
         aria-expanded={isOpen}
         className="flex w-full cursor-pointer items-center gap-4 px-5 py-4 text-left transition hover:bg-zinc-50"
       >

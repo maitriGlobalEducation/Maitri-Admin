@@ -41,10 +41,18 @@ export interface HomepageSection {
   content: Record<string, unknown>;
 }
 
+export interface HomepageSEO {
+  metaTitle: string;
+  metaDescription: string;
+  metaKeywords: string[];
+  focusKeyword: string;
+}
+
 export interface Homepage {
   _id?: string;
   hero: HomepageHero;
   sections: HomepageSection[];
+  seo?: HomepageSEO;
   createdAt?: string;
   updatedAt?: string;
 }

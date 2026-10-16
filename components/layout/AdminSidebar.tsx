@@ -10,7 +10,6 @@ import {
   MessageSquareQuote,
   Home,
   Users,
-  Settings,
   LogOut,
   UserRound,
   ChevronDown,
@@ -57,7 +56,7 @@ const cmsSections = [
       { label: "Events", href: "/cms/events", icon: Calendar },
       {
         label: "Event Categories",
-        href: "/cms/event-categories",
+        href: "/cms/events/event-categories",
         icon: FolderOpen,
       },
     ],

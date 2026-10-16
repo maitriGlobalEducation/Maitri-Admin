@@ -4,6 +4,8 @@ import Event from "@/models/Event";
 import cloudinary from "@/lib/cloudinary";
 import { connectDB } from "@/lib/mongodb";
 import { authorizeAdmin } from "@/lib/api-auth";
+import { getEventInstant, isValidTimezone } from "@/lib/event-time";
+import { revalidatePublicpage } from "@/services/revalidation.service";
 
 interface RouteContext {
   params: Promise<{
@@ -83,8 +85,10 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     const {
       title,
       slug,
+      category,
       eventDate,
       eventTime,
+      eventTimezone,
       cardImage,
       contentImage,
       content,
@@ -96,7 +100,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       status,
     } = body;
 
-    if (!title?.trim()) {
+    if (typeof title !== "string" || !title.trim()) {
       return NextResponse.json(
         {
           success: false,
@@ -106,7 +110,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       );
     }
 
-    if (!slug?.trim()) {
+    if (typeof slug !== "string" || !slug.trim()) {
       return NextResponse.json(
         {
           success: false,
@@ -116,21 +120,54 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       );
     }
 
-    if (!eventDate) {
+    if (
+      typeof eventDate !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(eventDate)
+    ) {
       return NextResponse.json(
         {
           success: false,
-          message: "Event date is required",
+          message: "A valid event date is required (YYYY-MM-DD)",
         },
         { status: 400 },
       );
     }
 
-    if (!eventTime?.trim()) {
+    const [year, month, day] = eventDate.split("-").map(Number);
+    const calendarDate = new Date(Date.UTC(year, month - 1, day));
+
+    if (
+      calendarDate.getUTCFullYear() !== year ||
+      calendarDate.getUTCMonth() !== month - 1 ||
+      calendarDate.getUTCDate() !== day
+    ) {
       return NextResponse.json(
         {
           success: false,
-          message: "Event time is required",
+          message: "Please provide a valid calendar date",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (
+      typeof eventTime !== "string" ||
+      !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(eventTime)
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "A valid event time is required (HH:mm)",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (typeof eventTimezone !== "string" || !isValidTimezone(eventTimezone)) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "A valid event timezone is required",
         },
         { status: 400 },
       );
@@ -146,8 +183,10 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       );
     }
 
+    const normalizedSlug = slug.trim().toLowerCase();
+
     const existingEvent = await Event.findOne({
-      slug: slug.trim().toLowerCase(),
+      slug: normalizedSlug,
       _id: { $ne: id },
     });
 
@@ -161,23 +200,39 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       );
     }
 
+    let eventStartsAt: Date;
+
+    try {
+      eventStartsAt = getEventInstant(eventDate, eventTime, eventTimezone);
+    } catch {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Could not resolve the event date and time for the selected timezone",
+        },
+        { status: 400 },
+      );
+    }
+
     const event = await Event.findByIdAndUpdate(
       id,
       {
         title: title.trim(),
-        slug: slug.trim().toLowerCase(),
+        slug: normalizedSlug,
+        category,
+        // Preserve the admin's original local date and time.
+        eventDate,
+        eventTime,
+        eventTimezone,
 
-        eventDate: new Date(eventDate),
-        eventTime: eventTime.trim(),
+        // Recalculate whenever the event is edited.
+        eventStartsAt,
 
         cardImage: cardImage ?? null,
         contentImage: contentImage ?? null,
-
         content,
-
-        registrationForm: registrationForm ?? {
-          fields: [],
-        },
+        registrationForm: registrationForm ?? { fields: [] },
 
         metaTitle: metaTitle ?? "",
         metaDescription: metaDescription ?? "",
@@ -201,6 +256,8 @@ export async function PATCH(request: Request, { params }: RouteContext) {
         { status: 404 },
       );
     }
+
+    await revalidatePublicpage();
 
     return NextResponse.json({
       success: true,
@@ -262,6 +319,8 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
     );
 
     await Event.findByIdAndDelete(id);
+
+    await revalidatePublicpage();
 
     return NextResponse.json({
       success: true,

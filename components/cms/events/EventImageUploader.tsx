@@ -26,34 +26,71 @@ export default function EventImageUploader({
 }: EventImageUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const handleSelectFiles = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const files = Array.from(event.target.files ?? []);
+  const handleUpload = async (files: File[]) => {
+    if (!files.length || isUploading) return;
 
-    if (!files.length) return;
+    const remainingSlots = 2 - images.length;
 
-    if (images.length + files.length > 2) {
+    if (remainingSlots <= 0) {
       toast.error("You can upload a maximum of 2 images.");
-      event.target.value = "";
       return;
     }
+
+    const validFiles = files.filter((file) =>
+      ["image/jpeg", "image/png", "image/webp"].includes(file.type),
+    );
+
+    if (validFiles.length !== files.length) {
+      toast.error("Only JPG, PNG, and WebP images are supported.");
+    }
+
+    if (!validFiles.length) return;
+
+    if (validFiles.length > remainingSlots) {
+      toast.error(
+        `You can upload only ${remainingSlots} more image${remainingSlots === 1 ? "" : "s"}.`,
+      );
+    }
+
+    const filesToUpload = validFiles.slice(0, remainingSlots);
+
+    // The displayed limit is 10MB per image.
+    const oversizedFiles = filesToUpload.filter(
+      (file) => file.size > 10 * 1024 * 1024,
+    );
+
+    if (oversizedFiles.length) {
+      toast.error("Each image must be 10MB or smaller.");
+    }
+
+    const acceptedFiles = filesToUpload.filter(
+      (file) => file.size <= 10 * 1024 * 1024,
+    );
+
+    if (!acceptedFiles.length) return;
 
     try {
       setIsUploading(true);
 
       const uploadedImages = await Promise.all(
-        files.map((file) => uploadImage(file, "events")),
+        acceptedFiles.map((file) => uploadImage(file, "events")),
       );
 
       const nextImages = [...images, ...uploadedImages];
 
       onImagesChange(nextImages);
 
-      if (nextImages.length === 1) {
+      if (images.length === 0 && nextImages.length > 0) {
         onCardImageIndexChange(0);
       }
+
+      toast.success(
+        uploadedImages.length === 1
+          ? "Image uploaded successfully."
+          : "Images uploaded successfully.",
+      );
     } catch (error) {
       console.error("EVENT IMAGE UPLOAD ERROR:", error);
 
@@ -67,6 +104,42 @@ export default function EventImageUploader({
         inputRef.current.value = "";
       }
     }
+  };
+
+  const handleSelectFiles = (event: React.ChangeEvent<HTMLInputElement>) => {
+    void handleUpload(Array.from(event.target.files ?? []));
+  };
+
+  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!isUploading) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Ignore movement between children inside the drop area.
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      return;
+    }
+
+    setIsDragging(false);
+  };
+
+  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
+
+    if (isUploading) return;
+
+    const files = Array.from(event.dataTransfer.files);
+    void handleUpload(files);
   };
 
   const handleRemove = (index: number) => {
@@ -102,7 +175,7 @@ export default function EventImageUploader({
           {images.map((image, index) => (
             <div
               key={image.publicId}
-              className="overflow-hidden rounded-xl border border-zinc-200"
+              className="overflow-hidden rounded-xl border border-zinc-200 bg-white"
             >
               <div className="relative aspect-video bg-zinc-100">
                 <img
@@ -114,7 +187,9 @@ export default function EventImageUploader({
                 <button
                   type="button"
                   onClick={() => handleRemove(index)}
-                  className="absolute right-3 top-3 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/90 text-zinc-600 shadow-sm transition hover:bg-white hover:text-red-600"
+                  disabled={isUploading}
+                  aria-label={`Remove image ${index + 1}`}
+                  className="absolute right-3 top-3 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/90 text-zinc-600 shadow-sm transition hover:bg-white hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -127,6 +202,7 @@ export default function EventImageUploader({
                     name="event-card-image"
                     checked={cardImageIndex === index}
                     onChange={() => onCardImageIndexChange(index)}
+                    disabled={isUploading}
                   />
                   Card Image
                 </label>
@@ -139,26 +215,75 @@ export default function EventImageUploader({
       )}
 
       {images.length < 2 && (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={isUploading}
-          className="flex h-32 w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-300 text-sm text-zinc-500 transition hover:border-zinc-400 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+        <div
+          onDragEnter={handleDragOver}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`relative flex min-h-36 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 text-center transition ${
+            isUploading
+              ? "cursor-not-allowed border-zinc-200 bg-zinc-50 opacity-70"
+              : isDragging
+                ? "cursor-copy border-zinc-500 bg-zinc-50"
+                : "cursor-pointer border-zinc-300 bg-white hover:bg-zinc-50"
+          }`}
+          onClick={() => {
+            if (!isUploading) inputRef.current?.click();
+          }}
+          role="button"
+          tabIndex={isUploading ? -1 : 0}
+          aria-label="Upload event images"
+          onKeyDown={(event) => {
+            if (!isUploading && (event.key === "Enter" || event.key === " ")) {
+              event.preventDefault();
+              inputRef.current?.click();
+            }
+          }}
         >
           {isUploading ? (
             <>
-              <Loader2 className="h-5 w-5 animate-spin" />
-              Uploading...
+              <Loader2 className="h-6 w-6 animate-spin text-zinc-600" />
+              <p className="text-sm font-medium text-zinc-700">
+                Uploading images...
+              </p>
+              <p className="text-xs text-zinc-400">
+                Please wait until the upload finishes.
+              </p>
+            </>
+          ) : isDragging ? (
+            <>
+              <ImagePlus className="h-7 w-7 text-zinc-600" />
+              <p className="text-sm font-semibold text-zinc-700">
+                Drop your images here
+              </p>
+              <p className="text-xs text-zinc-600">Release to upload</p>
             </>
           ) : (
             <>
-              <ImagePlus className="h-5 w-5" />
-              {images.length === 0
-                ? "Upload event image"
-                : "Upload second image"}
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-zinc-100 text-zinc-600">
+                <ImagePlus className="h-5 w-5" />
+              </div>
+
+              <p className="text-sm font-semibold text-zinc-800">
+                {images.length === 0
+                  ? "Drag and drop event images here"
+                  : "Drag and drop a second image"}
+              </p>
+
+              <p className="text-sm text-zinc-500">
+                or{" "}
+                <span className="font-medium text-zinc-600 underline underline-offset-2">
+                  browse files
+                </span>
+              </p>
+
+              <p className="text-xs text-zinc-400">
+                {2 - images.length} upload slot
+                {2 - images.length === 1 ? "" : "s"} remaining
+              </p>
             </>
           )}
-        </button>
+        </div>
       )}
 
       <p className="text-xs text-zinc-400">

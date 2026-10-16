@@ -14,6 +14,7 @@ import UniversityManager from "@/components/cms/universities/UniversityManager";
 import HomepageSectionCard from "./HomepageSectionCard";
 import HomepageCareerChoicesForm from "./HomepageCareerChoicesForm";
 import type { HomepageCareerChoicesContent } from "@/types/homepage";
+import HomepageSEOForm, { HomepageSEO } from "./HomepageSEOForm";
 
 const emptyAboutContent: HomepageAboutContent = {
   image: null,
@@ -39,6 +40,16 @@ export default function HomepageManager() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [savedHomepage, setSavedHomepage] = useState<Homepage | null>(null);
+  const [openSection, setOpenSection] = useState<string | null>(null);
+
+  const initialSEO: HomepageSEO = {
+    metaTitle: "",
+    metaDescription: "",
+    metaKeywords: [],
+    focusKeyword: "",
+  };
+
+  const [homepageSEO, setHomepageSEO] = useState<HomepageSEO>(initialSEO);
 
   useEffect(() => {
     getHomepage()
@@ -46,6 +57,12 @@ export default function HomepageManager() {
         if (data) {
           setHomepage(data);
           setSavedHomepage(data);
+          setHomepageSEO({
+            metaTitle: data.seo?.metaTitle ?? "",
+            metaDescription: data.seo?.metaDescription ?? "",
+            metaKeywords: data.seo?.metaKeywords ?? [],
+            focusKeyword: data.seo?.focusKeyword ?? "",
+          });
         } else {
           toast.error("Homepage settings have not been initialized yet.");
         }
@@ -62,21 +79,41 @@ export default function HomepageManager() {
 
     setIsSaving(true);
 
+    const homepageToSave: Homepage = {
+      ...homepage,
+      seo: {
+        metaTitle: homepageSEO.metaTitle.trim(),
+        metaDescription: homepageSEO.metaDescription.trim(),
+        metaKeywords: homepageSEO.metaKeywords,
+        focusKeyword: homepageSEO.focusKeyword.trim(),
+      },
+    };
+
     try {
-      const savedHomepage = await toast.promise(updateHomepage(homepage), {
-        pending: "Saving homepage changes...",
-        success: "Homepage saved successfully",
-        error: {
-          render({ data }) {
-            return data instanceof Error
-              ? data.message
-              : "Failed to save homepage";
+      const savedHomepage = await toast.promise(
+        updateHomepage(homepageToSave),
+        {
+          pending: "Saving homepage changes...",
+          success: "Homepage saved successfully",
+          error: {
+            render({ data }) {
+              return data instanceof Error
+                ? data.message
+                : "Failed to save homepage";
+            },
           },
         },
-      });
+      );
 
       setHomepage(savedHomepage);
       setSavedHomepage(savedHomepage);
+
+      setHomepageSEO({
+        metaTitle: savedHomepage.seo?.metaTitle ?? "",
+        metaDescription: savedHomepage.seo?.metaDescription ?? "",
+        metaKeywords: savedHomepage.seo?.metaKeywords ?? [],
+        focusKeyword: savedHomepage.seo?.focusKeyword ?? "",
+      });
     } catch (error) {
       console.error(error);
     } finally {
@@ -379,22 +416,40 @@ export default function HomepageManager() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Save className="h-4 w-4" />
-          {isSaving ? "Saving..." : "Save Changes"}
-        </button>
+        {openSection !== "universities" && (
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Save className="h-4 w-4" />
+            {isSaving ? "Saving..." : "Save Changes"}
+          </button>
+        )}
       </div>
       <div className="space-y-4">
         <HomepageSectionCard
           number="01"
+          title="Home Page SEO Metadata"
+          description="Manage homepage title, description and search keywords"
+          isOpen={openSection === "seo"}
+          onToggle={() =>
+            setOpenSection((current) => (current === "seo" ? null : "seo"))
+          }
+        >
+          <HomepageSEOForm seo={homepageSEO} onChange={setHomepageSEO} />
+        </HomepageSectionCard>
+
+        <HomepageSectionCard
+          number="02"
           title="Hero Section"
           description="Background video, heading, subtitle and two CTAs"
           isDirty={isHeroDirty()}
+          isOpen={openSection === "hero"}
+          onToggle={() =>
+            setOpenSection((current) => (current === "hero" ? null : "hero"))
+          }
           // defaultOpen
         >
           <HomepageHeroForm
@@ -408,10 +463,14 @@ export default function HomepageManager() {
         </HomepageSectionCard>
 
         <HomepageSectionCard
-          number="02"
+          number="03"
           title="Who We Are & What We Do"
           description="Image, introduction and CTA"
           isDirty={isSectionDirty("about")}
+          isOpen={openSection === "about"}
+          onToggle={() =>
+            setOpenSection((current) => (current === "about" ? null : "about"))
+          }
         >
           <HomepageAboutForm
             content={aboutContent}
@@ -422,10 +481,16 @@ export default function HomepageManager() {
         </HomepageSectionCard>
 
         <HomepageSectionCard
-          number="03"
+          number="04"
           title="Study in Prestigious Locations"
           description="Section heading, link and country image cards"
           isDirty={isSectionDirty("locations")}
+          isOpen={openSection === "locations"}
+          onToggle={() =>
+            setOpenSection((current) =>
+              current === "locations" ? null : "locations",
+            )
+          }
         >
           <HomepageLocationsForm
             content={locationsContent}
@@ -436,9 +501,15 @@ export default function HomepageManager() {
         </HomepageSectionCard>
 
         <HomepageSectionCard
-          number="04"
+          number="05"
           title="Universities"
           description="Manage university logos, background images, highlights and links"
+          isOpen={openSection === "universities"}
+          onToggle={() =>
+            setOpenSection((current) =>
+              current === "universities" ? null : "universities",
+            )
+          }
         >
           <UniversityManager
             isVisible={universitiesSection?.isVisible ?? false}
@@ -447,10 +518,16 @@ export default function HomepageManager() {
         </HomepageSectionCard>
 
         <HomepageSectionCard
-          number="05"
+          number="06"
           title="Elite Career Choices"
           description="Manage career cards, images, categories and source names"
           isDirty={isSectionDirty("careerChoices")}
+          isOpen={openSection === "careerChoices"}
+          onToggle={() =>
+            setOpenSection((current) =>
+              current === "careerChoices" ? null : "careerChoices",
+            )
+          }
         >
           <HomepageCareerChoicesForm
             content={careerChoicesContent}

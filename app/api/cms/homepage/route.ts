@@ -31,7 +31,7 @@ export async function PUT(request: Request) {
     await connectDB();
 
     const body = await request.json();
-    const { hero, sections } = body;
+    const { hero, sections, seo } = body;
 
     if (
       !hero ||
@@ -62,6 +62,22 @@ export async function PUT(request: Request) {
       );
     }
 
+    if (
+      seo !== undefined &&
+      (typeof seo.metaTitle !== "string" ||
+        typeof seo.metaDescription !== "string" ||
+        !Array.isArray(seo.metaKeywords) ||
+        !seo.metaKeywords.every(
+          (keyword: unknown) => typeof keyword === "string",
+        ) ||
+        typeof seo.focusKeyword !== "string")
+    ) {
+      return NextResponse.json(
+        { success: false, message: "Invalid homepage SEO data" },
+        { status: 400 },
+      );
+    }
+
     const video = hero.backgroundVideo;
 
     if (
@@ -84,6 +100,21 @@ export async function PUT(request: Request) {
 
     if (sections !== undefined) {
       update.sections = sections;
+    }
+
+    if (seo !== undefined) {
+      update.seo = {
+        metaTitle: seo.metaTitle.trim(),
+        metaDescription: seo.metaDescription.trim(),
+        metaKeywords: [
+          ...new Set(
+            seo.metaKeywords
+              .map((keyword: string) => keyword.trim())
+              .filter(Boolean),
+          ),
+        ],
+        focusKeyword: seo.focusKeyword.trim(),
+      };
     }
 
     let homepage = await Homepage.findOne();

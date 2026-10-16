@@ -21,6 +21,7 @@
     "@tiptap/starter-kit": "^3.31.4",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.11.0",
+    "date-fns-tz": "^3.2.0",
     "dotenv": "^18.0.7",
     "jose": "^6.2.12",
     "lucide-react": "^1.52.0",

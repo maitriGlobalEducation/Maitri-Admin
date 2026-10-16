@@ -52,6 +52,31 @@ const HomepageSectionSchema = new Schema(
   { _id: false },
 );
 
+const HomepageSEOSchema = new Schema(
+  {
+    metaTitle: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    metaDescription: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    metaKeywords: {
+      type: [String],
+      default: [],
+    },
+    focusKeyword: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+  },
+  { _id: false },
+);
+
 const HomepageSchema = new Schema(
   {
     hero: {
@@ -61,6 +86,10 @@ const HomepageSchema = new Schema(
     sections: {
       type: [HomepageSectionSchema],
       default: [],
+    },
+    seo: {
+      type: HomepageSEOSchema,
+      default: () => ({}),
     },
   },
   { timestamps: true },

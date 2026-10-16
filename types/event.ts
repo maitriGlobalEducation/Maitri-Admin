@@ -29,7 +29,7 @@ export interface Event {
 
   title: string;
   slug: string;
-
+  category: string;
   eventDate: string;
   eventTime: string;
 
@@ -37,7 +37,7 @@ export interface Event {
   contentImage: EventImage | null;
 
   content: Record<string, unknown>;
-
+  eventTimezone: string;
   registrationForm: EventRegistrationForm;
 
   // SEO
