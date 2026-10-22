@@ -61,34 +61,26 @@ export async function POST(request: NextRequest) {
       metaKeywords,
       focusKeyword,
       status,
+      featured,
     } = body;
 
     if (!title?.trim()) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "Title is required",
-        },
+        { success: false, message: "Title is required" },
         { status: 400 },
       );
     }
 
     if (!slug?.trim()) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "Slug is required",
-        },
+        { success: false, message: "Slug is required" },
         { status: 400 },
       );
     }
 
     if (!content) {
       return NextResponse.json(
-        {
-          success: false,
-          message: "Scholarship content is required",
-        },
+        { success: false, message: "Scholarship content is required" },
         { status: 400 },
       );
     }
@@ -132,6 +124,7 @@ export async function POST(request: NextRequest) {
       focusKeyword: focusKeyword ?? "",
 
       status: status ?? "draft",
+      featured: featured ?? false,
     });
 
     await revalidatePublicpage();

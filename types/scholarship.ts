@@ -43,7 +43,7 @@ export interface Scholarship {
   content: Record<string, unknown>;
 
   applicationForm: ScholarshipApplicationForm;
-
+  featured: boolean;
   ctaLabel: string;
   ctaUrl: string;
 

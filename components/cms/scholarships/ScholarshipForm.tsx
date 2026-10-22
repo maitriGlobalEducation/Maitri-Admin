@@ -37,6 +37,7 @@ interface FormData {
   focusKeyword: string;
 
   status: "draft" | "published";
+  featured: boolean;
   applicationFields: ScholarshipFormField[];
 }
 
@@ -60,6 +61,7 @@ const initialFormData: FormData = {
   focusKeyword: "",
 
   status: "draft",
+  featured: false,
   applicationFields: [],
 };
 
@@ -83,6 +85,72 @@ export default function ScholarshipForm({
   const [metaKeywordsInput, setMetaKeywordsInput] = useState("");
 
   const isEditing = Boolean(scholarship);
+
+  const [featuredScholarshipToReplace, setFeaturedScholarshipToReplace] =
+    useState<Scholarship | null>(null);
+
+  const [showFeaturedConfirm, setShowFeaturedConfirm] = useState(false);
+  const [isCheckingFeatured, setIsCheckingFeatured] = useState(false);
+
+  const handleFeaturedChange = async (checked: boolean) => {
+    if (!checked) {
+      setFormData((current) => ({
+        ...current,
+        featured: false,
+      }));
+      return;
+    }
+
+    // This scholarship is already featured.
+    if (scholarship?.featured) {
+      setFormData((current) => ({
+        ...current,
+        featured: true,
+      }));
+      return;
+    }
+
+    try {
+      setIsCheckingFeatured(true);
+
+      const response = await fetch("/api/cms/scholarships");
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(
+          result.message ?? "Failed to check featured scholarship",
+        );
+      }
+
+      if (!Array.isArray(result.data)) {
+        throw new Error("Unexpected response from the scholarships API.");
+      }
+
+      const existingFeaturedScholarship = (result.data as Scholarship[]).find(
+        (item) => item.featured && item._id !== scholarship?._id,
+      );
+
+      if (existingFeaturedScholarship) {
+        setFeaturedScholarshipToReplace(existingFeaturedScholarship);
+        setShowFeaturedConfirm(true);
+        return;
+      }
+
+      setFormData((current) => ({
+        ...current,
+        featured: true,
+      }));
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to check featured scholarship";
+
+      toast.error(message);
+    } finally {
+      setIsCheckingFeatured(false);
+    }
+  };
 
   useEffect(() => {
     if (scholarship) {
@@ -121,7 +189,7 @@ export default function ScholarshipForm({
         metaDescription: scholarship.metaDescription ?? "",
         metaKeywords: scholarship.metaKeywords ?? [],
         focusKeyword: scholarship.focusKeyword ?? "",
-
+        featured: scholarship.featured ?? false,
         status: scholarship.status,
         applicationFields: scholarship.applicationForm?.fields ?? [],
       });
@@ -239,7 +307,7 @@ export default function ScholarshipForm({
         metaDescription: formData.metaDescription,
         metaKeywords,
         focusKeyword: formData.focusKeyword,
-
+        featured: formData.featured,
         status: formData.status,
       };
 
@@ -670,38 +738,52 @@ export default function ScholarshipForm({
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-6">
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-700">
-              <input
-                type="radio"
-                name="scholarship-status"
-                value="draft"
-                checked={formData.status === "draft"}
-                onChange={() =>
-                  setFormData((current) => ({
-                    ...current,
-                    status: "draft",
-                  }))
-                }
-              />
-              Draft
-            </label>
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div className="w-full sm:max-w-md">
+              <label
+                htmlFor="scholarship-status"
+                className="mb-2 block text-sm font-medium text-zinc-700"
+              >
+                Publication status
+              </label>
 
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-700">
-              <input
-                type="radio"
+              <select
+                id="scholarship-status"
                 name="scholarship-status"
-                value="published"
-                checked={formData.status === "published"}
-                onChange={() =>
+                value={formData.status}
+                onChange={(e) =>
                   setFormData((current) => ({
                     ...current,
-                    status: "published",
+                    status: e.target.value as typeof current.status,
                   }))
                 }
-              />
-              Published
-            </label>
+                className="h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-800 outline-none transition focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200"
+              >
+                <option value="draft">Draft</option>
+                <option value="published">Published</option>
+              </select>
+            </div>
+
+            <div className="w-full sm:max-w-sm">
+              <label className="flex w-full cursor-pointer items-center justify-between gap-4 rounded-lg border border-zinc-200 px-4 py-3 transition-colors hover:border-zinc-300">
+                <div>
+                  <p className="text-sm font-medium text-zinc-800">
+                    Featured scholarship
+                  </p>
+                  <p className="mt-0.5 text-xs text-zinc-500">
+                    Highlight this scholarship on the website.
+                  </p>
+                </div>
+
+                <input
+                  type="checkbox"
+                  checked={formData.featured}
+                  disabled={isCheckingFeatured}
+                  onChange={(e) => handleFeaturedChange(e.target.checked)}
+                  className="size-4 shrink-0 cursor-pointer accent-zinc-950 disabled:cursor-wait"
+                />
+              </label>
+            </div>
           </div>
         </section>
 
@@ -719,7 +801,7 @@ export default function ScholarshipForm({
             type="button"
             onClick={onCancel}
             disabled={isSubmitting}
-            className="h-10 rounded-lg border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-10 cursor-pointer rounded-lg border border-zinc-200 px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Cancel Edit
           </button>
@@ -737,6 +819,101 @@ export default function ScholarshipForm({
               : "Create Scholarship"}
         </button>
       </div>
+
+      {showFeaturedConfirm && featuredScholarshipToReplace && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowFeaturedConfirm(false);
+              setFeaturedScholarshipToReplace(null);
+            }
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="featured-scholarship-confirm-title"
+            className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl"
+          >
+            <div className="p-6 sm:p-7">
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+                <span className="text-xl">★</span>
+              </div>
+
+              <h2
+                id="featured-scholarship-confirm-title"
+                className="text-xl font-semibold text-zinc-900"
+              >
+                A featured scholarship already exists
+              </h2>
+
+              <p className="mt-2 text-sm leading-6 text-zinc-600">
+                Do you want to replace the currently featured scholarship with
+                this one?
+              </p>
+
+              <div className="mt-5 overflow-hidden rounded-xl border border-zinc-200">
+                {featuredScholarshipToReplace.cardImage?.url && (
+                  <img
+                    src={featuredScholarshipToReplace.cardImage.url}
+                    alt={featuredScholarshipToReplace.title}
+                    className="h-44 w-full object-cover"
+                  />
+                )}
+
+                <div className="p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    Currently featured
+                  </p>
+
+                  <h3 className="mt-1 font-semibold text-zinc-900">
+                    {featuredScholarshipToReplace.title}
+                  </h3>
+
+                  <p className="mt-1 text-sm text-zinc-500">
+                    {featuredScholarshipToReplace.amount || "Scholarship"}
+                  </p>
+                </div>
+              </div>
+
+              <p className="mt-4 text-sm text-zinc-600">
+                The new featured selection will take effect when you save this
+                scholarship.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3 border-t border-zinc-200 bg-zinc-50 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowFeaturedConfirm(false);
+                  setFeaturedScholarshipToReplace(null);
+                }}
+                className="cursor-pointer rounded-lg border border-zinc-200 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
+              >
+                No, cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setFormData((current) => ({
+                    ...current,
+                    featured: true,
+                  }));
+
+                  setShowFeaturedConfirm(false);
+                  setFeaturedScholarshipToReplace(null);
+                }}
+                className="cursor-pointer rounded-lg bg-zinc-950 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800"
+              >
+                Yes, replace featured scholarship
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

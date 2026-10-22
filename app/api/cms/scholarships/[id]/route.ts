@@ -88,7 +88,11 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       metaKeywords,
       focusKeyword,
       status,
+      featured,
     } = body;
+
+    console.log("Incoming featured value:", body.featured);
+    console.log("Incoming request body:", body);
 
     if (!title?.trim()) {
       return NextResponse.json(
@@ -148,6 +152,8 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         ctaUrl: ctaUrl ?? "",
 
         status: status ?? "draft",
+        featured: featured ?? false,
+
         metaTitle: metaTitle ?? "",
         metaDescription: metaDescription ?? "",
         metaKeywords: metaKeywords ?? [],
