@@ -35,7 +35,7 @@ interface FormData {
   metaDescription: string;
   metaKeywords: string[];
   focusKeyword: string;
-
+  featured: boolean;
   status: "draft" | "published";
 }
 
@@ -61,7 +61,7 @@ const initialFormData: FormData = {
   metaDescription: "",
   metaKeywords: [],
   focusKeyword: "",
-
+  featured: false,
   status: "draft",
 };
 interface EventCategoryOption {
@@ -92,6 +92,10 @@ export default function EventForm({
   const isEditing = Boolean(event);
 
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
+
+  const [showFeaturedConfirm, setShowFeaturedConfirm] = useState(false);
+  const [featuredEventToReplace, setFeaturedEventToReplace] =
+    useState<Event | null>(null);
 
   const fetchCategories = useCallback(async () => {
     setIsLoadingCategories(true);
@@ -161,7 +165,7 @@ export default function EventForm({
         metaDescription: event.metaDescription ?? "",
         metaKeywords: event.metaKeywords ?? [],
         focusKeyword: event.focusKeyword ?? "",
-
+        featured: event.featured ?? false,
         status: event.status,
       });
 
@@ -207,6 +211,58 @@ export default function EventForm({
             .replace(/[^a-z0-9]+/g, "-")
             .replace(/(^-|-$)/g, ""),
     }));
+  };
+
+  const handleFeaturedChange = async (checked: boolean) => {
+    if (!checked) {
+      setFormData((current) => ({
+        ...current,
+        featured: false,
+      }));
+      return;
+    }
+
+    // Don't prompt when this event is already the featured one.
+    if (event?.featured) {
+      setFormData((current) => ({
+        ...current,
+        featured: true,
+      }));
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/cms/events", {
+        cache: "no-store",
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message ?? "Failed to check featured events.");
+      }
+
+      const currentFeaturedEvent = (result.data as Event[]).find(
+        (item) => item.featured && item._id !== event?._id,
+      );
+
+      if (currentFeaturedEvent) {
+        setFeaturedEventToReplace(currentFeaturedEvent);
+        setShowFeaturedConfirm(true);
+        return;
+      }
+
+      setFormData((current) => ({
+        ...current,
+        featured: true,
+      }));
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to check featured events.",
+      );
+    }
   };
 
   const handleSubmit = async (
@@ -255,7 +311,7 @@ export default function EventForm({
         metaDescription: formData.metaDescription,
         metaKeywords,
         focusKeyword: formData.focusKeyword,
-
+        featured: formData.featured,
         status: formData.status,
       };
 
@@ -672,37 +728,47 @@ export default function EventForm({
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-6">
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-700">
-              <input
-                type="radio"
-                name="event-status"
-                value="draft"
-                checked={formData.status === "draft"}
-                onChange={() =>
-                  setFormData((current) => ({
-                    ...current,
-                    status: "draft",
-                  }))
-                }
-              />
-              Draft
-            </label>
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div className="w-full sm:max-w-md">
+              <label
+                htmlFor="event-status"
+                className="mb-2 block text-sm font-medium text-zinc-700"
+              >
+                Publication status
+              </label>
 
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-700">
-              <input
-                type="radio"
-                name="event-status"
-                value="published"
-                checked={formData.status === "published"}
-                onChange={() =>
+              <select
+                id="event-status"
+                value={formData.status}
+                onChange={(e) =>
                   setFormData((current) => ({
                     ...current,
-                    status: "published",
+                    status: e.target.value as FormData["status"],
                   }))
                 }
+                className="h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-800 outline-none transition focus:border-zinc-500 focus:ring-2 focus:ring-zinc-200"
+              >
+                <option value="draft">Draft</option>
+                <option value="published">Published</option>
+              </select>
+            </div>
+
+            <label className="flex w-full cursor-pointer items-center justify-between gap-4 rounded-lg border border-zinc-200 px-4 py-3 transition-colors hover:border-zinc-300 sm:max-w-sm">
+              <div>
+                <p className="text-sm font-medium text-zinc-800">
+                  Featured event
+                </p>
+                <p className="mt-0.5 text-xs text-zinc-500">
+                  Highlight this event on the website.
+                </p>
+              </div>
+
+              <input
+                type="checkbox"
+                checked={formData.featured}
+                onChange={(e) => void handleFeaturedChange(e.target.checked)}
+                className="size-4 shrink-0 cursor-pointer accent-zinc-950"
               />
-              Published
             </label>
           </div>
         </section>
@@ -735,6 +801,101 @@ export default function EventForm({
           {isSubmitting ? "Saving..." : event ? "Save Changes" : "Create Event"}
         </button>
       </div>
+
+      {showFeaturedConfirm && featuredEventToReplace && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowFeaturedConfirm(false);
+              setFeaturedEventToReplace(null);
+            }
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="featured-event-confirm-title"
+            className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl"
+          >
+            <div className="p-6 sm:p-7">
+              <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+                <span className="text-xl">★</span>
+              </div>
+
+              <h2
+                id="featured-event-confirm-title"
+                className="text-xl font-semibold text-zinc-900"
+              >
+                A featured event already exists
+              </h2>
+
+              <p className="mt-2 text-sm leading-6 text-zinc-600">
+                Do you want to replace the currently featured event with this
+                one?
+              </p>
+
+              <div className="mt-5 overflow-hidden rounded-xl border border-zinc-200">
+                {featuredEventToReplace.cardImage?.url && (
+                  <img
+                    src={featuredEventToReplace.cardImage.url}
+                    alt={featuredEventToReplace.title}
+                    className="h-44 w-full object-cover"
+                  />
+                )}
+
+                <div className="p-4">
+                  <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    Currently featured
+                  </p>
+
+                  <h3 className="mt-1 font-semibold text-zinc-900">
+                    {featuredEventToReplace.title}
+                  </h3>
+
+                  <p className="mt-1 text-sm text-zinc-500">
+                    {featuredEventToReplace.category || "Event"}
+                  </p>
+                </div>
+              </div>
+
+              <p className="mt-4 text-sm text-zinc-600">
+                The new featured selection will take effect when you save this
+                event.
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-3 border-t border-zinc-200 bg-zinc-50 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowFeaturedConfirm(false);
+                  setFeaturedEventToReplace(null);
+                }}
+                className="cursor-pointer rounded-lg border border-zinc-200 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
+              >
+                No, cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setFormData((current) => ({
+                    ...current,
+                    featured: true,
+                  }));
+
+                  setShowFeaturedConfirm(false);
+                  setFeaturedEventToReplace(null);
+                }}
+                className="cursor-pointer rounded-lg bg-zinc-950 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800"
+              >
+                Yes, replace featured event
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

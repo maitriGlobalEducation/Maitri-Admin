@@ -56,6 +56,7 @@ export async function POST(request: Request) {
       metaKeywords,
       focusKeyword,
       status,
+      featured,
     } = body;
 
     if (typeof title !== "string" || !title.trim()) {
@@ -73,6 +74,16 @@ export async function POST(request: Request) {
         {
           success: false,
           message: "Event slug is required",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (featured !== undefined && typeof featured !== "boolean") {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Featured must be a boolean",
         },
         { status: 400 },
       );
@@ -194,9 +205,16 @@ export async function POST(request: Request) {
       metaDescription: metaDescription ?? "",
       metaKeywords: metaKeywords ?? [],
       focusKeyword: focusKeyword ?? "",
-
+      featured: featured ?? false,
       status: status ?? "draft",
     });
+
+    if (featured === true) {
+      await Event.updateMany(
+        { _id: { $ne: event._id }, featured: true },
+        { $set: { featured: false } },
+      );
+    }
 
     await revalidatePublicpage();
 

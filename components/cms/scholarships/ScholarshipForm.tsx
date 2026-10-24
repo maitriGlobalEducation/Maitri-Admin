@@ -154,25 +154,13 @@ export default function ScholarshipForm({
 
   useEffect(() => {
     if (scholarship) {
-      const loadedImages = [
-        scholarship.cardImage,
-        scholarship.contentImage,
-      ].filter(Boolean) as {
-        url: string;
-        publicId: string;
-      }[];
-
-      const uniqueImages = loadedImages.filter(
-        (image, index, array) =>
-          array.findIndex((item) => item.publicId === image.publicId) === index,
-      );
-
-      const loadedCardImageIndex =
-        scholarship.cardImage && uniqueImages.length
-          ? uniqueImages.findIndex(
-              (image) => image.publicId === scholarship.cardImage?.publicId,
-            )
-          : 0;
+      // const loadedImages = [
+      //   scholarship.cardImage,
+      //   scholarship.contentImage,
+      // ].filter(Boolean) as {
+      //   url: string;
+      //   publicId: string;
+      // }[];
 
       setFormData({
         title: scholarship.title ?? "",

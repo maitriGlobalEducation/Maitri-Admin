@@ -47,7 +47,7 @@ export interface Event {
   focusKeyword: string;
 
   status: EventStatus;
-
+  featured: boolean;
   createdAt: string;
   updatedAt: string;
 }

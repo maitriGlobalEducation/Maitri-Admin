@@ -98,6 +98,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       metaKeywords,
       focusKeyword,
       status,
+      featured,
     } = body;
 
     if (typeof title !== "string" || !title.trim()) {
@@ -115,6 +116,16 @@ export async function PATCH(request: Request, { params }: RouteContext) {
         {
           success: false,
           message: "Event slug is required",
+        },
+        { status: 400 },
+      );
+    }
+
+    if (featured !== undefined && typeof featured !== "boolean") {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Featured must be a boolean",
         },
         { status: 400 },
       );
@@ -238,7 +249,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
         metaDescription: metaDescription ?? "",
         metaKeywords: metaKeywords ?? [],
         focusKeyword: focusKeyword ?? "",
-
+        ...(typeof featured === "boolean" ? { featured } : {}),
         status: status ?? "draft",
       },
       {
@@ -246,6 +257,13 @@ export async function PATCH(request: Request, { params }: RouteContext) {
         runValidators: true,
       },
     ).lean();
+
+    if (featured === true) {
+      await Event.updateMany(
+        { _id: { $ne: event._id }, featured: true },
+        { $set: { featured: false } },
+      );
+    }
 
     if (!event) {
       return NextResponse.json(

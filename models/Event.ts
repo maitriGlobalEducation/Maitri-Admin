@@ -147,6 +147,10 @@ const EventSchema = new Schema(
       enum: ["draft", "published"],
       default: "draft",
     },
+    featured: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
