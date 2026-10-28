@@ -69,6 +69,24 @@ const cmsSections = [
   },
 ];
 
+const crmSections = [
+  {
+    label: "Contact Enquiries",
+    href: "/crm/contacts",
+    icon: MessageSquareQuote,
+  },
+  {
+    label: "Event Registrations",
+    href: "/crm/event-registrations",
+    icon: CalendarDays,
+  },
+  {
+    label: "Scholarship Applications",
+    href: "/crm/scholarship-applications",
+    icon: GraduationCap,
+  },
+];
+
 interface CurrentAdmin {
   id: string;
   username: string;
@@ -82,6 +100,9 @@ interface AdminSidebarProps {
 export default function AdminSidebar({ admin }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+
+  const isCRM = pathname.startsWith("/crm");
+  const isCMS = pathname.startsWith("/cms");
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
@@ -142,6 +163,7 @@ export default function AdminSidebar({ admin }: AdminSidebarProps) {
 
   return (
     <aside className="fixed left-0 top-0 flex h-screen w-64 flex-col border-r border-zinc-200 bg-white">
+      {/* Header */}
       <div className="flex h-16 shrink-0 items-center border-b border-zinc-200 px-6 py-2">
         <div>
           <p className="text-lg font-semibold text-zinc-900">Maitri</p>
@@ -149,129 +171,184 @@ export default function AdminSidebar({ admin }: AdminSidebarProps) {
         </div>
       </div>
 
+      {/* Navigation */}
       <div className="flex-1 overflow-y-auto px-3 py-5">
-        <div>
+        {/* Workspace switcher */}
+        <div className="mb-7">
           <p className="mb-3 px-3 text-xs font-medium uppercase tracking-wider text-zinc-400">
-            CMS
+            Workspaces
           </p>
 
-          <nav className="space-y-1">
-            {cmsSections.map((section) => {
-              const Icon = section.icon;
-              const hasChildren = "items" in section;
+          <div className="grid grid-cols-2 gap-2">
+            <Link
+              href="/cms/homepage"
+              className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-medium transition ${
+                isCMS
+                  ? "bg-zinc-900 text-white shadow-sm"
+                  : "border border-zinc-200 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
+              }`}
+            >
+              <Home size={14} />
+              CMS
+            </Link>
 
-              // Homepage and Testimonials are direct navigation links.
-              if (!hasChildren) {
-                const active = isActive(section.href);
-
-                return (
-                  <Link
-                    key={section.href}
-                    href={section.href}
-                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
-                      active
-                        ? "bg-zinc-100 font-medium text-zinc-950"
-                        : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
-                    }`}
-                  >
-                    <Icon size={18} className="shrink-0" />
-                    <span>{section.label}</span>
-                  </Link>
-                );
-              }
-
-              // Only Blogs, Scholarships, and Events have dropdowns.
-              const isOpen = openSections.includes(section.label);
-              const hasActiveItem =
-                section.items &&
-                section.items.some((item) => isActive(item.href));
-
-              return (
-                <div key={section.label}>
-                  <button
-                    type="button"
-                    onClick={() => toggleSection(section.label)}
-                    aria-expanded={isOpen}
-                    className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition ${
-                      hasActiveItem
-                        ? "font-medium text-zinc-950"
-                        : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
-                    }`}
-                  >
-                    <Icon size={18} className="shrink-0" />
-
-                    <span className="flex-1">{section.label}</span>
-
-                    <ChevronDown
-                      size={16}
-                      className={`shrink-0 text-zinc-400 transition-transform duration-200 ${
-                        isOpen ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-
-                  {isOpen && (
-                    <div className="ml-4 mt-1 space-y-1 border-l border-zinc-200 pl-3">
-                      {section.items &&
-                        section.items.map((item) => {
-                          const ItemIcon = item.icon;
-                          const active = isActive(item.href);
-
-                          return (
-                            <Link
-                              key={item.href}
-                              href={item.href}
-                              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
-                                active
-                                  ? "bg-zinc-100 font-medium text-zinc-950"
-                                  : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"
-                              }`}
-                            >
-                              <ItemIcon size={16} className="shrink-0" />
-                              <span>{item.label}</span>
-                            </Link>
-                          );
-                        })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </nav>
-        </div>
-
-        <div className="mt-7">
-          <p className="mb-2 px-3 text-xs font-medium uppercase tracking-wider text-zinc-400">
-            CRM
-          </p>
-
-          <div className="flex cursor-not-allowed items-center justify-between rounded-lg px-3 py-2 text-sm text-zinc-400">
-            <div className="flex items-center gap-3">
-              <Users size={18} />
+            <Link
+              href="/crm"
+              className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-medium transition ${
+                isCRM
+                  ? "bg-zinc-900 text-white shadow-sm"
+                  : "border border-zinc-200 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
+              }`}
+            >
+              <Users size={14} />
               CRM
-            </div>
-
-            <span className="text-[10px] uppercase">Soon</span>
+            </Link>
           </div>
         </div>
 
+        {/* Context-specific navigation */}
+        <div>
+          <p className="mb-3 px-3 text-xs font-medium uppercase tracking-wider text-zinc-400">
+            {isCRM ? "Customer Management" : "Content Management"}
+          </p>
+
+          <nav className="space-y-1">
+            {isCRM
+              ? crmSections.map((section) => {
+                  const Icon = section.icon;
+                  const active =
+                    pathname === section.href ||
+                    pathname.startsWith(`${section.href}/`);
+
+                  return (
+                    <Link
+                      key={section.href}
+                      href={section.href}
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
+                        active
+                          ? "bg-orange-50 font-medium text-[#e94717]"
+                          : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
+                      }`}
+                    >
+                      <Icon size={18} className="shrink-0" />
+                      <span>{section.label}</span>
+                    </Link>
+                  );
+                })
+              : cmsSections.map((section) => {
+                  const Icon = section.icon;
+                  const hasChildren = "items" in section;
+
+                  // Direct navigation links
+                  if (!hasChildren) {
+                    const active =
+                      pathname === section.href ||
+                      pathname.startsWith(`${section.href}/`);
+
+                    return (
+                      <Link
+                        key={section.href}
+                        href={section.href}
+                        className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
+                          active
+                            ? "bg-zinc-100 font-medium text-zinc-950"
+                            : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
+                        }`}
+                      >
+                        <Icon size={18} className="shrink-0" />
+                        <span>{section.label}</span>
+                      </Link>
+                    );
+                  }
+
+                  // Expandable CMS sections
+                  const isOpen = openSections.includes(section.label);
+
+                  const hasActiveItem = section.items?.some(
+                    (item) =>
+                      pathname === item.href ||
+                      pathname.startsWith(`${item.href}/`),
+                  );
+
+                  return (
+                    <div key={section.label}>
+                      <button
+                        type="button"
+                        onClick={() => toggleSection(section.label)}
+                        aria-expanded={isOpen}
+                        className={`flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition ${
+                          hasActiveItem
+                            ? "font-medium text-zinc-950"
+                            : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
+                        }`}
+                      >
+                        <Icon size={18} className="shrink-0" />
+
+                        <span className="flex-1">{section.label}</span>
+
+                        <ChevronDown
+                          size={16}
+                          className={`shrink-0 text-zinc-400 transition-transform duration-200 ${
+                            isOpen ? "rotate-180" : ""
+                          }`}
+                        />
+                      </button>
+
+                      {isOpen && (
+                        <div className="ml-4 mt-1 space-y-1 border-l border-zinc-200 pl-3">
+                          {section.items?.map((item) => {
+                            const ItemIcon = item.icon;
+
+                            const active =
+                              pathname === item.href ||
+                              pathname.startsWith(`${item.href}/`);
+
+                            return (
+                              <Link
+                                key={item.href}
+                                href={item.href}
+                                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
+                                  active
+                                    ? "bg-zinc-100 font-medium text-zinc-950"
+                                    : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"
+                                }`}
+                              >
+                                <ItemIcon size={16} className="shrink-0" />
+                                <span>{item.label}</span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+          </nav>
+        </div>
+
+        {/* Super admin access */}
         {admin?.role === "SUPER_ADMIN" && (
-          <div className="mt-7">
+          <div className="mt-7 border-t border-zinc-100 pt-5">
+            <p className="mb-3 px-3 text-xs font-medium uppercase tracking-wider text-zinc-400">
+              Administration
+            </p>
+
             <Link
-              href="/cms/admin"
+              href="/admin"
               className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
-                pathname === "/cms/admin"
+                pathname === "/admin"
                   ? "bg-zinc-100 font-medium text-zinc-950"
                   : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
               }`}
             >
-              <ShieldCheck size={18} />
+              <ShieldCheck size={18} className="shrink-0" />
               Admin
             </Link>
           </div>
         )}
       </div>
 
+      {/* Account and logout */}
       <div className="shrink-0 border-t border-zinc-200 p-3">
         <div className="mb-2 flex items-center gap-3 rounded-xl border border-zinc-200 bg-zinc-50/70 p-3">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-zinc-900 text-sm font-semibold text-white shadow-sm">
