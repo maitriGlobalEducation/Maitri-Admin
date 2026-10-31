@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type {
-  ExploreInstitute,
-  ExploreInstituteInput,
-  ExploreInstituteStatus,
-} from "@/types/explore-institute";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import {
+  getInstitutesPage,
+  type InstitutePage,
+} from "@/services/explore-institutes.service";
 import SearchableMultiSelect, {
   SelectOption,
 } from "@/components/cms/explore/SearchableMultiSelect";
@@ -14,6 +14,11 @@ import MediaUploader from "@/components/cms/MediaUploader";
 import { toast } from "react-toastify";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import { Search, X } from "lucide-react";
+import {
+  ExploreInstitute,
+  ExploreInstituteInput,
+  ExploreInstituteStatus,
+} from "@/types/explore-institute";
 
 type InstituteForm = Omit<ExploreInstituteInput, "campuses"> & {
   areas: string[];
@@ -106,8 +111,20 @@ export default function InstitutesManager() {
 
   const ITEMS_PER_PAGE = 10;
 
-  const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  const [totalInstitutes, setTotalInstitutes] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  const [pageLoading, setPageLoading] = useState(false);
+
+  const pageCache = useRef(new Map<string, InstitutePage>());
+  const requestControllers = useRef(new Map<string, AbortController>());
+
+  const getCacheKey = (page: number, search: string) =>
+    `${search.trim().toLowerCase()}::${page}`;
 
   const filteredInstitutes = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -132,24 +149,106 @@ export default function InstitutesManager() {
     });
   }, [institutes, searchQuery]);
 
-  const totalPages = Math.ceil(filteredInstitutes.length / ITEMS_PER_PAGE);
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 500);
 
-  const paginatedInstitutes = filteredInstitutes.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE,
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
+
+  const prefetchPage = useCallback(async (page: number, search: string) => {
+    if (page < 1) return;
+
+    const key = getCacheKey(page, search);
+
+    if (pageCache.current.has(key) || requestControllers.current.has(key)) {
+      return;
+    }
+
+    const controller = new AbortController();
+    requestControllers.current.set(key, controller);
+
+    try {
+      const result = await getInstitutesPage(page, search, controller.signal);
+
+      pageCache.current.set(key, result);
+    } catch (error) {
+      if (!(error instanceof Error && error.name === "AbortError")) {
+        console.error("Institute prefetch failed:", error);
+      }
+    } finally {
+      requestControllers.current.delete(key);
+    }
+  }, []);
+
+  const loadPage = useCallback(
+    async (page: number, search: string, forceRefresh = false) => {
+      const key = getCacheKey(page, search);
+
+      if (forceRefresh) {
+        pageCache.current.delete(key);
+      }
+
+      const cached = pageCache.current.get(key);
+
+      if (cached) {
+        setInstitutes(cached.institutes);
+        setTotalInstitutes(cached.pagination.total);
+        setTotalPages(cached.pagination.totalPages);
+        setCurrentPage(page);
+        setLoading(false);
+        setPageLoading(false);
+
+        // Prepare the next page in the background.
+        if (cached.pagination.hasNextPage) {
+          void prefetchPage(page + 1, search);
+        }
+
+        return;
+      }
+
+      setPageLoading(true);
+      if (institutes.length === 0) setLoading(true);
+
+      try {
+        const result = await getInstitutesPage(page, search);
+
+        pageCache.current.set(key, result);
+
+        setInstitutes(result.institutes);
+        setTotalInstitutes(result.pagination.total);
+        setTotalPages(result.pagination.totalPages);
+        setCurrentPage(page);
+        setError("");
+
+        // Prefetch the next page without blocking the current page.
+        if (result.pagination.hasNextPage) {
+          void prefetchPage(page + 1, search);
+        }
+      } catch (error) {
+        setError(
+          error instanceof Error ? error.message : "Failed to load institutes.",
+        );
+      } finally {
+        setLoading(false);
+        setPageLoading(false);
+      }
+    },
+    [prefetchPage, institutes.length],
   );
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery]);
+  }, [debouncedSearch]);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  useEffect(() => {
+    void loadPage(currentPage, debouncedSearch);
+  }, [currentPage, debouncedSearch, loadPage]);
 
+  const loadReferenceData = useCallback(async () => {
     try {
       const endpoints = [
-        "/api/cms/explore/institutes",
         "/api/cms/explore/areas",
         "/api/cms/explore/brands",
         "/api/cms/explore/campuses",
@@ -169,25 +268,28 @@ export default function InstitutesManager() {
       const failed = results.find((result) => !result.ok);
 
       if (failed) {
-        throw new Error(failed.body.message || "Failed to load Explore data.");
+        throw new Error(
+          failed.body.message || "Failed to load reference data.",
+        );
       }
 
-      const [instituteResult, areaResult, brandResult, campusResult] = results;
+      const [areaResult, brandResult, campusResult] = results;
 
-      setInstitutes(instituteResult.body.institutes ?? []);
       setAreas(areaResult.body.areas ?? []);
       setBrands(brandResult.body.brands ?? []);
       setAvailableCampuses(campusResult.body.campuses ?? []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load CMS data.");
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to load reference data.",
+      );
     }
   }, []);
 
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    void loadReferenceData();
+  }, [loadReferenceData]);
 
   function updateField<K extends keyof InstituteForm>(
     key: K,
@@ -245,7 +347,7 @@ export default function InstitutesManager() {
 
     const metaKeywords = metaKeywordsInput
       .split(",")
-      .map((keyword) => keyword.trim())
+      .map((keyword: string) => keyword.trim())
       .filter(Boolean);
 
     try {
@@ -338,7 +440,15 @@ export default function InstitutesManager() {
         resetForm();
       }
 
-      await loadData();
+      pageCache.current.clear();
+
+      const nextPage =
+        institutes.length === 1 && currentPage > 1
+          ? currentPage - 1
+          : currentPage;
+
+      setCurrentPage(nextPage);
+      await loadPage(nextPage, debouncedSearch, true);
     } catch (error) {
       setDeleteError(
         error instanceof Error ? error.message : "Failed to delete institute.",
@@ -644,7 +754,7 @@ export default function InstitutesManager() {
         <div className="flex flex-col gap-4 border-b border-zinc-200 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-semibold text-zinc-900">
-              Existing institutes ({filteredInstitutes.length})
+              Existing institutes ({totalInstitutes})
             </h2>
 
             <p className="mt-1 text-xs text-zinc-500">
@@ -688,7 +798,11 @@ export default function InstitutesManager() {
 
             <button
               type="button"
-              onClick={() => void loadData()}
+              onClick={() => {
+                pageCache.current.clear();
+                void loadPage(currentPage, debouncedSearch, true);
+                void loadReferenceData();
+              }}
               className="h-10 cursor-pointer rounded-lg px-3 text-sm font-medium text-orange-600 hover:bg-orange-50 hover:text-orange-700"
             >
               Refresh
@@ -737,7 +851,7 @@ export default function InstitutesManager() {
 
                 {/* Records */}
                 <div className="divide-y divide-zinc-100">
-                  {paginatedInstitutes.map((institute, index) => {
+                  {institutes.map((institute, index) => {
                     const areaNames = getReferenceNames(institute.areas);
                     const campusNames = getReferenceNames(institute.campuses);
 
