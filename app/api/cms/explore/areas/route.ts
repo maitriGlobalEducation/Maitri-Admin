@@ -4,17 +4,43 @@ import { revalidatePublicpage } from "@/services/revalidation.service";
 import ExploreArea from "@/models/ExploreArea";
 import { cleanText, validImage } from "@/lib/explore-resource";
 import { connectDB } from "@/lib/mongodb";
+import {
+  escapeRegex,
+  getPaginationParams,
+  paginationResponse,
+} from "@/lib/explore-pagination";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const { response } = await authorizeAdmin();
     if (response) return response;
 
     await connectDB();
 
-    const areas = await ExploreArea.find().sort({ name: 1 }).lean();
+    const { page, limit, search, skip } = getPaginationParams(request);
 
-    return NextResponse.json({ success: true, areas });
+    const isPaginated = new URL(request.url).searchParams.has("page");
+
+    if (!isPaginated) {
+      const areas = await ExploreArea.find().sort({ name: 1 }).lean();
+
+      return NextResponse.json({ success: true, areas });
+    }
+
+    const filter = search
+      ? { name: { $regex: escapeRegex(search), $options: "i" } }
+      : {};
+
+    const [areas, total] = await Promise.all([
+      ExploreArea.find(filter).sort({ name: 1 }).skip(skip).limit(limit).lean(),
+      ExploreArea.countDocuments(filter),
+    ]);
+
+    return NextResponse.json({
+      success: true,
+      areas,
+      pagination: paginationResponse(page, limit, total),
+    });
   } catch (error) {
     console.error("GET areas:", error);
     return NextResponse.json(

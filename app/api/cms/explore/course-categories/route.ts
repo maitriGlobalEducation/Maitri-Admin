@@ -4,19 +4,49 @@ import { revalidatePublicpage } from "@/services/revalidation.service";
 import ExploreCourseCategory from "@/models/ExploreCourseCategory";
 import { cleanText } from "@/lib/explore-resource";
 import { connectDB } from "@/lib/mongodb";
+import {
+  escapeRegex,
+  getPaginationParams,
+  paginationResponse,
+} from "@/lib/explore-pagination";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const { response } = await authorizeAdmin();
     if (response) return response;
 
     await connectDB();
 
-    const courseCategories = await ExploreCourseCategory.find()
-      .sort({ createdAt: -1 })
-      .lean();
+    const { page, limit, search, skip } = getPaginationParams(request);
 
-    return NextResponse.json({ success: true, courseCategories });
+    const isPaginated = new URL(request.url).searchParams.has("page");
+
+    if (!isPaginated) {
+      const courseCategories = await ExploreCourseCategory.find()
+        .sort({ createdAt: -1 })
+        .lean();
+
+      return NextResponse.json({ success: true, courseCategories });
+    }
+
+    const filter = search
+      ? { name: { $regex: escapeRegex(search), $options: "i" } }
+      : {};
+
+    const [courseCategories, total] = await Promise.all([
+      ExploreCourseCategory.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      ExploreCourseCategory.countDocuments(filter),
+    ]);
+
+    return NextResponse.json({
+      success: true,
+      courseCategories,
+      pagination: paginationResponse(page, limit, total),
+    });
   } catch (error) {
     console.error("GET course categories:", error);
 

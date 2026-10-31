@@ -4,17 +4,47 @@ import { authorizeAdmin } from "@/lib/api-auth";
 import { revalidatePublicpage } from "@/services/revalidation.service";
 import { cleanText, validImage } from "@/lib/explore-resource";
 import { connectDB } from "@/lib/mongodb";
+import {
+  escapeRegex,
+  getPaginationParams,
+  paginationResponse,
+} from "@/lib/explore-pagination";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const { response } = await authorizeAdmin();
   if (response) return response;
 
   try {
     await connectDB();
 
-    const brands = await ExploreBrand.find().sort({ createdAt: -1 }).lean();
+    const { page, limit, search, skip } = getPaginationParams(request);
 
-    return NextResponse.json({ success: true, brands });
+    const isPaginated = new URL(request.url).searchParams.has("page");
+
+    if (!isPaginated) {
+      const brands = await ExploreBrand.find().sort({ createdAt: -1 }).lean();
+
+      return NextResponse.json({ success: true, brands });
+    }
+
+    const filter = search
+      ? { name: { $regex: escapeRegex(search), $options: "i" } }
+      : {};
+
+    const [brands, total] = await Promise.all([
+      ExploreBrand.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      ExploreBrand.countDocuments(filter),
+    ]);
+
+    return NextResponse.json({
+      success: true,
+      brands,
+      pagination: paginationResponse(page, limit, total),
+    });
   } catch (error) {
     console.error("GET EXPLORE BRANDS ERROR:", error);
 

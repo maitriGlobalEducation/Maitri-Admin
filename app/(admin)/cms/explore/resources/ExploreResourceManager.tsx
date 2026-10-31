@@ -126,7 +126,12 @@ export default function ExploreResourceManager({
   const [searchQuery, setSearchQuery] = useState("");
   const ITEMS_PER_PAGE = 10;
 
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [pageLoading, setPageLoading] = useState(false);
 
   const filteredItems = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -147,8 +152,6 @@ export default function ExploreResourceManager({
     });
   }, [items, searchQuery, settings.hasInstitute]);
 
-  const totalPages = Math.ceil(filteredItems.length / ITEMS_PER_PAGE);
-
   const paginatedItems = filteredItems.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
@@ -162,50 +165,74 @@ export default function ExploreResourceManager({
     setCurrentPage((page) => Math.min(page, Math.max(totalPages, 1)));
   }, [totalPages]);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  const loadData = useCallback(
+    async (page = 1, search = "") => {
+      setPageLoading(true);
+      setError("");
 
-    try {
-      const requests = [fetch(settings.endpoint)];
+      try {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(ITEMS_PER_PAGE),
+          search,
+        });
 
-      if (settings.hasInstitute) {
-        requests.push(fetch("/api/cms/explore/institutes"));
-      }
+        const requests = [fetch(`${settings.endpoint}?${params.toString()}`)];
 
-      const responses = await Promise.all(requests);
-      const results = await Promise.all(
-        responses.map(async (response) => ({
-          ok: response.ok,
-          body: await response.json(),
-        })),
-      );
-
-      if (!results[0].ok) {
-        throw new Error(results[0].body.message || "Failed to load records.");
-      }
-
-      setItems(results[0].body[settings.responseKey] ?? []);
-
-      if (settings.hasInstitute && results[1]) {
-        if (!results[1].ok) {
-          throw new Error(
-            results[1].body.message || "Failed to load institutes.",
-          );
+        if (settings.hasInstitute) {
+          requests.push(fetch("/api/cms/explore/institutes"));
         }
 
-        setInstitutes(results[1].body.institutes ?? []);
+        const responses = await Promise.all(requests);
+
+        const results = await Promise.all(
+          responses.map(async (response) => ({
+            ok: response.ok,
+            body: await response.json(),
+          })),
+        );
+
+        if (!results[0].ok) {
+          throw new Error(results[0].body.message || "Failed to load records.");
+        }
+
+        const result = results[0].body;
+
+        setItems(result[settings.responseKey] ?? []);
+        setTotalItems(result.pagination?.total ?? 0);
+        setTotalPages(result.pagination?.totalPages ?? 0);
+
+        if (settings.hasInstitute && results[1]) {
+          if (!results[1].ok) {
+            throw new Error(
+              results[1].body.message || "Failed to load institutes.",
+            );
+          }
+
+          setInstitutes(results[1].body.institutes ?? []);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load data.");
+      } finally {
+        setPageLoading(false);
+        setLoading(false);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load data.");
-    } finally {
-      setLoading(false);
-    }
-  }, [settings]);
+    },
+    [settings],
+  );
 
   useEffect(() => {
-    void loadData();
-  }, [loadData]);
+    const timeout = setTimeout(() => {
+      setCurrentPage(1);
+      setDebouncedSearch(searchQuery.trim());
+    }, 500);
+
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    void loadData(currentPage, debouncedSearch);
+  }, [currentPage, debouncedSearch, loadData]);
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((previous) => ({ ...previous, [key]: value }));
@@ -520,15 +547,14 @@ export default function ExploreResourceManager({
         <div className="flex flex-col gap-4 border-b border-zinc-200 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-semibold text-zinc-900">
-              Existing records ({filteredItems.length})
+              Existing records ({totalItems})
             </h2>
 
-            {filteredItems.length > 0 && (
+            {items.length > 0 && (
               <p className="mt-1 text-xs text-zinc-500">
                 Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–
-                {Math.min(currentPage * ITEMS_PER_PAGE, filteredItems.length)}{" "}
-                of {filteredItems.length}
-                {searchQuery.trim() && ` (filtered from ${items.length})`}
+                {Math.min(currentPage * ITEMS_PER_PAGE, totalItems)} of{" "}
+                {totalItems}
               </p>
             )}
           </div>
@@ -559,7 +585,7 @@ export default function ExploreResourceManager({
 
             <button
               type="button"
-              onClick={() => void loadData()}
+              onClick={() => void loadData(currentPage, debouncedSearch)}
               className="h-10 cursor-pointer rounded-lg px-3 text-sm font-medium text-orange-600 hover:bg-orange-50 hover:text-orange-700"
             >
               Refresh
@@ -573,19 +599,19 @@ export default function ExploreResourceManager({
             hasLocation={settings.hasLocation}
             hasInstitute={settings.hasInstitute}
           />
-        ) : filteredItems.length === 0 ? (
+        ) : items.length === 0 ? (
           <p className="p-5 text-sm text-zinc-500">
             {" "}
-            {searchQuery.trim()
-              ? `No records found matching "${searchQuery}".`
+            {debouncedSearch
+              ? `No records found matching "${debouncedSearch}".`
               : "No records added yet."}
           </p>
         ) : (
           <>
             <div className="divide-y divide-zinc-100">
-              {paginatedItems.map((item, index) => (
+              {items.map((item, index) => (
                 <div
-                  key={`${item._id}-${currentPage}-${searchQuery}`}
+                  key={item._id}
                   className="flex animate-[row-enter_350ms_ease-out_both] flex-col gap-3 p-4 transition-colors hover:bg-zinc-50/70 sm:flex-row sm:items-center"
                   style={{ animationDelay: `${index * 45}ms` }}
                 >
@@ -644,7 +670,7 @@ export default function ExploreResourceManager({
               <div className="flex items-center justify-between border-t border-zinc-200 px-4 py-3">
                 <button
                   type="button"
-                  disabled={currentPage === 1}
+                  disabled={currentPage === 1 || pageLoading}
                   onClick={() => setCurrentPage((page) => page - 1)}
                   className="cursor-pointer rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >
@@ -668,6 +694,7 @@ export default function ExploreResourceManager({
                         <button
                           type="button"
                           onClick={() => setCurrentPage(page)}
+                          disabled={pageLoading}
                           className={`size-9 cursor-pointer rounded-lg text-sm font-medium transition ${
                             currentPage === page
                               ? "bg-orange-600 text-white"
@@ -682,7 +709,7 @@ export default function ExploreResourceManager({
 
                 <button
                   type="button"
-                  disabled={currentPage === totalPages}
+                  disabled={currentPage === totalPages || pageLoading}
                   onClick={() => setCurrentPage((page) => page + 1)}
                   className="cursor-pointer rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >

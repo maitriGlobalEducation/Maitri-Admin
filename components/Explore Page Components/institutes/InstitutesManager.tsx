@@ -126,29 +126,6 @@ export default function InstitutesManager() {
   const getCacheKey = (page: number, search: string) =>
     `${search.trim().toLowerCase()}::${page}`;
 
-  const filteredInstitutes = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-
-    if (!query) return institutes;
-
-    return institutes.filter((institute) => {
-      const areaNames = getReferenceNames(institute.areas);
-      const campusNames = getReferenceNames(institute.campuses);
-
-      const searchableValues = [
-        institute.name,
-        institute.slug,
-        institute.status,
-        ...areaNames,
-        ...campusNames,
-      ];
-
-      return searchableValues.some((value) =>
-        value.toLowerCase().includes(query),
-      );
-    });
-  }, [institutes, searchQuery]);
-
   useEffect(() => {
     const timeout = setTimeout(() => {
       setDebouncedSearch(searchQuery.trim());
@@ -758,15 +735,11 @@ export default function InstitutesManager() {
             </h2>
 
             <p className="mt-1 text-xs text-zinc-500">
-              {filteredInstitutes.length > 0
+              {institutes.length > 0
                 ? `Showing ${(currentPage - 1) * ITEMS_PER_PAGE + 1}–${Math.min(
                     currentPage * ITEMS_PER_PAGE,
-                    filteredInstitutes.length,
-                  )} of ${filteredInstitutes.length}${
-                    searchQuery.trim()
-                      ? ` (filtered from ${institutes.length})`
-                      : ""
-                  }`
+                    totalInstitutes,
+                  )} of ${totalInstitutes}`
                 : "Manage your institute records"}
             </p>
           </div>
@@ -812,15 +785,15 @@ export default function InstitutesManager() {
 
         {loading ? (
           <InstituteTableSkeleton />
-        ) : filteredInstitutes.length === 0 ? (
+        ) : institutes.length === 0 ? (
           <div className="px-5 py-12 text-center">
             <p className="text-sm font-medium text-zinc-700">
-              {searchQuery.trim()
-                ? `No institutes found matching "${searchQuery}".`
+              {debouncedSearch
+                ? `No institutes found matching "${debouncedSearch}".`
                 : "No institutes yet."}
             </p>
             <p className="mt-1 text-xs text-zinc-500">
-              {searchQuery.trim()
+              {debouncedSearch
                 ? "Try searching with a different name, area, or campus."
                 : "Create your first institute using the form above."}
             </p>

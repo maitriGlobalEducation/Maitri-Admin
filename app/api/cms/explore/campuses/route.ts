@@ -4,17 +4,55 @@ import { revalidatePublicpage } from "@/services/revalidation.service";
 import ExploreCampus from "@/models/ExploreCampus";
 import { cleanText, validImage } from "@/lib/explore-resource";
 import { connectDB } from "@/lib/mongodb";
+import {
+  escapeRegex,
+  getPaginationParams,
+  paginationResponse,
+} from "@/lib/explore-pagination";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const { response } = await authorizeAdmin();
     if (response) return response;
 
     await connectDB();
 
-    const campuses = await ExploreCampus.find().sort({ createdAt: -1 }).lean();
+    const { page, limit, search, skip } = getPaginationParams(request);
 
-    return NextResponse.json({ success: true, campuses });
+    const isPaginated = new URL(request.url).searchParams.has("page");
+
+    if (!isPaginated) {
+      const campuses = await ExploreCampus.find()
+        .sort({ createdAt: -1 })
+        .lean();
+
+      return NextResponse.json({ success: true, campuses });
+    }
+
+    const filter = search
+      ? {
+          $or: [
+            { name: { $regex: escapeRegex(search), $options: "i" } },
+            { city: { $regex: escapeRegex(search), $options: "i" } },
+            { country: { $regex: escapeRegex(search), $options: "i" } },
+          ],
+        }
+      : {};
+
+    const [campuses, total] = await Promise.all([
+      ExploreCampus.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      ExploreCampus.countDocuments(filter),
+    ]);
+
+    return NextResponse.json({
+      success: true,
+      campuses,
+      pagination: paginationResponse(page, limit, total),
+    });
   } catch (error) {
     console.error("GET campuses:", error);
     return NextResponse.json(
