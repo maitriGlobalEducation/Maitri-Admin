@@ -6,6 +6,7 @@ import ExploreInstitute from "@/models/ExploreInstitute";
 import ExploreArea from "@/models/ExploreArea";
 import ExploreCampus from "@/models/ExploreCampus";
 import ExploreBrand from "@/models/ExploreBrand";
+import mongoose from "mongoose";
 
 const PAGE_SIZE = 10;
 
@@ -19,6 +20,10 @@ export async function GET(request: NextRequest) {
     if (response) return response;
 
     await connectDB();
+
+    console.log("Mongoose connection:", mongoose.connection.name);
+    console.log("Registered models:", mongoose.modelNames());
+    console.log("Brand model registered:", mongoose.models.ExploreBrand);
 
     const { searchParams } = new URL(request.url);
 
@@ -45,6 +50,14 @@ export async function GET(request: NextRequest) {
         { campuses: { $in: matchingCampuses } },
       ];
     }
+
+    console.log("Production model check:", {
+      connectionName: mongoose.connection.name,
+      registeredModels: mongoose.modelNames(),
+      brandModel: !!mongoose.models.ExploreBrand,
+      instituteConnection: ExploreInstitute.db.name,
+      brandConnection: ExploreBrand.db.name,
+    });
 
     const [institutes, total] = await Promise.all([
       ExploreInstitute.find(filter)
