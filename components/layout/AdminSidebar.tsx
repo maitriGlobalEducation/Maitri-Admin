@@ -18,6 +18,13 @@ import {
   GraduationCap,
   Calendar,
   ShieldCheck,
+  Compass,
+  Palette,
+  Building2,
+  MapPin,
+  Map as MapIcon,
+  Layers3,
+  Tag,
 } from "lucide-react";
 import { AdminRole } from "@/models/Admin";
 
@@ -27,8 +34,47 @@ const cmsSections = [
     href: "/cms/homepage",
     icon: Home,
   },
+
   {
-    label: "Blogs Section",
+    label: "Explore",
+    icon: Compass,
+    items: [
+      {
+        label: "Institutes",
+        href: "/cms/explore/institutes",
+        icon: Building2,
+      },
+      {
+        label: "Courses",
+        href: "/cms/explore/courses",
+        icon: GraduationCap,
+      },
+      {
+        label: "Course Categories",
+        href: "/cms/explore/course-categories",
+        icon: Layers3,
+      },
+      {
+        label: "Campuses",
+        href: "/cms/explore/campuses",
+        icon: MapPin,
+      },
+
+      {
+        label: "Areas",
+        href: "/cms/explore/areas",
+        icon: MapIcon,
+      },
+      {
+        label: "Brands",
+        href: "/cms/explore/brands",
+        icon: Tag,
+      },
+    ],
+  },
+
+  {
+    label: "Blogs",
     icon: Newspaper,
     items: [
       { label: "Blogs", href: "/cms/blogs", icon: FileText },
@@ -40,7 +86,7 @@ const cmsSections = [
     ],
   },
   {
-    label: "Scholarships Section",
+    label: "Scholarships",
     icon: BadgePercent,
     items: [
       {
@@ -51,7 +97,7 @@ const cmsSections = [
     ],
   },
   {
-    label: "Events Section",
+    label: "Events",
     icon: CalendarDays,
     items: [
       { label: "Events", href: "/cms/events", icon: Calendar },

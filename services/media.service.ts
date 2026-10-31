@@ -36,7 +36,14 @@ export type MediaType =
   | "testimonials"
   | "homepage"
   | "universities"
-  | "career-choices";
+  | "career-choices"
+  | "explore-campuses"
+  | "explore-areas"
+  | "explore-brands"
+  | "explore-institutes"
+  | "explore-categories"
+  | "explore-courses"
+  | "explore-course-categories";
 
 export async function uploadImage(
   file: File,
@@ -103,7 +110,10 @@ function validateImage(file: File) {
   }
 }
 
-export async function uploadVideo(file: File): Promise<UploadedMedia> {
+export async function uploadVideo(
+  file: File,
+  type: MediaType = "homepage",
+): Promise<UploadedMedia> {
   const MAX_SIZE = 100 * 1024 * 1024;
   const ALLOWED_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
 
@@ -120,7 +130,7 @@ export async function uploadVideo(file: File): Promise<UploadedMedia> {
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ type: "homepage" }),
+    body: JSON.stringify({ type }),
   });
 
   const signResult: SignatureResponse = await signResponse.json();

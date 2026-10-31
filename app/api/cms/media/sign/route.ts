@@ -11,6 +11,15 @@ const allowedFolders = {
   testimonials: "maitri/testimonials",
   homepage: "maitri/homepage",
   "career-choices": "maitri/career-choices",
+
+  // Explore
+  "explore-campuses": "maitri/explore/campuses",
+  "explore-areas": "maitri/explore/areas",
+  "explore-brands": "maitri/explore/brands",
+  "explore-institutes": "maitri/explore/institutes",
+  "explore-categories": "maitri/explore/categories",
+  "explore-courses": "maitri/explore/courses",
+  "explore-course-categories": "maitri/explore/course-categories",
 } as const;
 
 export async function POST(request: NextRequest) {
