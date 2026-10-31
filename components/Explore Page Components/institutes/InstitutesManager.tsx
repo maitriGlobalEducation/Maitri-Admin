@@ -962,7 +962,7 @@ export default function InstitutesManager() {
               <div className="flex items-center justify-between border-t border-zinc-200 px-5 py-3">
                 <button
                   type="button"
-                  disabled={currentPage === 1}
+                  disabled={currentPage === 1 || pageLoading}
                   onClick={() => setCurrentPage((page) => page - 1)}
                   className="cursor-pointer rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >
@@ -986,6 +986,7 @@ export default function InstitutesManager() {
                         <button
                           type="button"
                           onClick={() => setCurrentPage(page)}
+                          disabled={pageLoading || currentPage === page}
                           className={`size-9 cursor-pointer rounded-lg text-sm font-medium transition ${
                             currentPage === page
                               ? "bg-orange-600 text-white"
@@ -1000,7 +1001,7 @@ export default function InstitutesManager() {
 
                 <button
                   type="button"
-                  disabled={currentPage === totalPages}
+                  disabled={currentPage === totalPages || pageLoading}
                   onClick={() => setCurrentPage((page) => page + 1)}
                   className="cursor-pointer rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
                 >

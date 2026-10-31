@@ -4,7 +4,7 @@ import MediaUploader from "@/components/cms/MediaUploader";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import { uploadImage } from "@/services/media.service";
 import { Search, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
 type ResourceKind = "campuses" | "course-categories" | "areas" | "brands";
@@ -152,10 +152,19 @@ export default function ExploreResourceManager({
     });
   }, [items, searchQuery, settings.hasInstitute]);
 
-  const paginatedItems = filteredItems.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE,
+  const pageCache = useRef(
+    new Map<
+      string,
+      {
+        items: Resource[];
+        total: number;
+        totalPages: number;
+      }
+    >(),
   );
+
+  const getCacheKey = (page: number, search: string) =>
+    `${kind}:${search.trim().toLowerCase()}:${page}`;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -166,7 +175,26 @@ export default function ExploreResourceManager({
   }, [totalPages]);
 
   const loadData = useCallback(
-    async (page = 1, search = "") => {
+    async (page = 1, search = "", force = false) => {
+      const cacheKey = getCacheKey(page, search);
+
+      if (!force) {
+        const cached = pageCache.current.get(cacheKey);
+
+        if (cached) {
+          setItems(cached.items);
+          setTotalItems(cached.total);
+          setTotalPages(cached.totalPages);
+          setLoading(false);
+          setPageLoading(false);
+
+          // Fetch the next page in the background.
+          void prefetchPage(page + 1, search);
+
+          return;
+        }
+      }
+
       setPageLoading(true);
       setError("");
 
@@ -198,9 +226,17 @@ export default function ExploreResourceManager({
 
         const result = results[0].body;
 
-        setItems(result[settings.responseKey] ?? []);
-        setTotalItems(result.pagination?.total ?? 0);
-        setTotalPages(result.pagination?.totalPages ?? 0);
+        const pageData = {
+          items: result[settings.responseKey] ?? [],
+          total: result.pagination?.total ?? 0,
+          totalPages: result.pagination?.totalPages ?? 0,
+        };
+
+        pageCache.current.set(cacheKey, pageData);
+
+        setItems(pageData.items);
+        setTotalItems(pageData.total);
+        setTotalPages(pageData.totalPages);
 
         if (settings.hasInstitute && results[1]) {
           if (!results[1].ok) {
@@ -211,6 +247,8 @@ export default function ExploreResourceManager({
 
           setInstitutes(results[1].body.institutes ?? []);
         }
+
+        void prefetchPage(page + 1, search);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load data.");
       } finally {
@@ -218,11 +256,45 @@ export default function ExploreResourceManager({
         setLoading(false);
       }
     },
-    [settings],
+    [settings, kind],
+  );
+
+  const prefetchPage = useCallback(
+    async (page: number, search: string) => {
+      const cacheKey = getCacheKey(page, search);
+
+      if (pageCache.current.has(cacheKey)) return;
+
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(ITEMS_PER_PAGE),
+        search,
+      });
+
+      try {
+        const response = await fetch(
+          `${settings.endpoint}?${params.toString()}`,
+        );
+
+        if (!response.ok) return;
+
+        const result = await response.json();
+
+        pageCache.current.set(cacheKey, {
+          items: result[settings.responseKey] ?? [],
+          total: result.pagination?.total ?? 0,
+          totalPages: result.pagination?.totalPages ?? 0,
+        });
+      } catch (error) {
+        console.error("Failed to prefetch resource page:", error);
+      }
+    },
+    [settings, kind],
   );
 
   useEffect(() => {
     const timeout = setTimeout(() => {
+      pageCache.current.clear();
       setCurrentPage(1);
       setDebouncedSearch(searchQuery.trim());
     }, 500);
@@ -317,8 +389,12 @@ export default function ExploreResourceManager({
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || "Failed to save.");
+        toast.error(result.message || "Failed to save.");
+        return;
       }
+
+      pageCache.current.clear();
+      await loadData(currentPage, debouncedSearch, true);
 
       resetForm();
       setNotice(
@@ -360,6 +436,8 @@ export default function ExploreResourceManager({
       setItemToDelete(null);
       setDeleteError("");
       toast.success("Record deleted successfully.");
+      pageCache.current.clear();
+      await loadData(currentPage, debouncedSearch, true);
 
       await loadData();
     } catch (err) {
@@ -585,7 +663,10 @@ export default function ExploreResourceManager({
 
             <button
               type="button"
-              onClick={() => void loadData(currentPage, debouncedSearch)}
+              onClick={() => {
+                pageCache.current.clear();
+                void loadData(currentPage, debouncedSearch, true);
+              }}
               className="h-10 cursor-pointer rounded-lg px-3 text-sm font-medium text-orange-600 hover:bg-orange-50 hover:text-orange-700"
             >
               Refresh
