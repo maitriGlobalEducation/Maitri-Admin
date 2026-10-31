@@ -91,7 +91,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
           runValidators: true,
         },
       ),
-    );
+    ).lean();
 
     if (!institute) {
       return NextResponse.json(

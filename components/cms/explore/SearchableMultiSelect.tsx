@@ -165,7 +165,7 @@ export default function SearchableMultiSelect({
           {selectedOptions.map((option) => (
             <span
               key={option._id}
-              className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-orange-100 bg-orange-50/70 py-1.5 pl-2.5 pr-1.5 text-xs font-medium text-orange-800"
+              className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50/70 py-1.5 pl-2.5 pr-1.5 text-xs font-medium text-orange-800"
             >
               <span className="truncate">{option.name}</span>
 

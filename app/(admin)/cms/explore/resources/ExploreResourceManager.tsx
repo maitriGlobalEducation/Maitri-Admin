@@ -568,7 +568,11 @@ export default function ExploreResourceManager({
         </div>
 
         {loading ? (
-          <p className="p-5 text-sm text-zinc-500">Loading records...</p>
+          <ResourceTableSkeleton
+            hasImage={settings.hasImage}
+            hasLocation={settings.hasLocation}
+            hasInstitute={settings.hasInstitute}
+          />
         ) : filteredItems.length === 0 ? (
           <p className="p-5 text-sm text-zinc-500">
             {" "}
@@ -579,10 +583,11 @@ export default function ExploreResourceManager({
         ) : (
           <>
             <div className="divide-y divide-zinc-100">
-              {paginatedItems.map((item) => (
+              {paginatedItems.map((item, index) => (
                 <div
-                  key={item._id}
-                  className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center"
+                  key={`${item._id}-${currentPage}-${searchQuery}`}
+                  className="flex animate-[row-enter_350ms_ease-out_both] flex-col gap-3 p-4 transition-colors hover:bg-zinc-50/70 sm:flex-row sm:items-center"
+                  style={{ animationDelay: `${index * 45}ms` }}
                 >
                   {settings.hasImage && item.image?.url && (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -704,6 +709,47 @@ export default function ExploreResourceManager({
         }}
         onConfirm={handleDelete}
       />
+    </div>
+  );
+}
+
+function ResourceTableSkeleton({
+  hasImage,
+  hasLocation,
+  hasInstitute,
+}: {
+  hasImage: boolean;
+  hasLocation: boolean;
+  hasInstitute: boolean;
+}) {
+  return (
+    <div className="divide-y divide-zinc-100">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <div
+          key={index}
+          className="flex animate-pulse flex-col gap-3 p-4 sm:flex-row sm:items-center"
+        >
+          {/* Image */}
+          {hasImage && (
+            <div className="size-14 shrink-0 rounded-lg bg-zinc-200" />
+          )}
+
+          {/* Record details */}
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="h-3.5 w-40 max-w-full rounded bg-zinc-200" />
+
+            {(hasLocation || hasInstitute) && (
+              <div className="h-3 w-28 rounded bg-zinc-100" />
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2">
+            <div className="h-9 w-16 rounded-lg bg-zinc-200" />
+            <div className="h-9 w-18 rounded-lg bg-zinc-100" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

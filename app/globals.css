@@ -287,3 +287,19 @@
    bottom: -6px;
    cursor: nwse-resize;
  }
+
+ @keyframes row-enter {
+   from {
+     opacity: 0;
+     transform: translateY(10px);
+   }
+
+   to {
+     opacity: 1;
+     transform: translateY(0);
+   }
+ }
+
+ .institute-row-enter {
+   animation: row-enter 350ms ease-out both;
+ }

@@ -4,26 +4,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   ExploreInstitute,
   ExploreInstituteInput,
-  InstituteCampus,
-  InstituteImage,
   ExploreInstituteStatus,
 } from "@/types/explore-institute";
 import SearchableMultiSelect, {
   SelectOption,
 } from "@/components/cms/explore/SearchableMultiSelect";
-import InstituteImageUpload from "@/components/cms/explore/InstituteImageUpload";
 import BlogEditor from "@/components/cms/blogs/BlogEditor";
 import MediaUploader from "@/components/cms/MediaUploader";
 import { toast } from "react-toastify";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import { Search, X } from "lucide-react";
-
-type Category = {
-  _id: string;
-  title: string;
-  slug: string;
-  status: "draft" | "published";
-};
 
 type InstituteForm = Omit<ExploreInstituteInput, "campuses"> & {
   areas: string[];
@@ -80,12 +70,6 @@ function makeSlug(value: string) {
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
-}
-
-function getCategoryIds(categories: (string | Category)[]) {
-  return categories.map((category) =>
-    typeof category === "string" ? category : category._id,
-  );
 }
 
 function getReferenceNames(records: (string | SelectOption)[] = []): string[] {
@@ -166,7 +150,6 @@ export default function InstitutesManager() {
     try {
       const endpoints = [
         "/api/cms/explore/institutes",
-        "/api/cms/explore/categories",
         "/api/cms/explore/areas",
         "/api/cms/explore/brands",
         "/api/cms/explore/campuses",
@@ -189,13 +172,7 @@ export default function InstitutesManager() {
         throw new Error(failed.body.message || "Failed to load Explore data.");
       }
 
-      const [
-        instituteResult,
-        categoryResult,
-        areaResult,
-        brandResult,
-        campusResult,
-      ] = results;
+      const [instituteResult, areaResult, brandResult, campusResult] = results;
 
       setInstitutes(instituteResult.body.institutes ?? []);
       setAreas(areaResult.body.areas ?? []);
@@ -255,14 +232,6 @@ export default function InstitutesManager() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  // function updateCampus(index: number, key: keyof CampusForm, value: string) {
-  //   setCampuses((previous) =>
-  //     previous.map((campus, i) =>
-  //       i === index ? { ...campus, [key]: value } : campus,
-  //     ),
-  //   );
-  // }
-
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -290,12 +259,14 @@ export default function InstitutesManager() {
         metaKeywords,
       };
 
+      const isEditing = Boolean(editingId);
+
       const response = await fetch(
-        editingId
+        isEditing
           ? `/api/cms/explore/institutes/${editingId}`
           : "/api/cms/explore/institutes",
         {
-          method: editingId ? "PUT" : "POST",
+          method: isEditing ? "PUT" : "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         },
@@ -308,9 +279,27 @@ export default function InstitutesManager() {
         return;
       }
 
-      toast.success(editingId ? "Institute Updated" : "Institute Added");
+      // The API should return the populated institute.
+      const savedInstitute: InstituteRecord = result.institute;
+
+      if (!savedInstitute?._id) {
+        throw new Error("Institute saved, but the returned data is invalid.");
+      }
+
+      if (editingId) {
+        setInstitutes((prev) =>
+          prev.map((institute) =>
+            institute._id === savedInstitute._id ? savedInstitute : institute,
+          ),
+        );
+      } else {
+        setInstitutes((prev) => [savedInstitute, ...prev]);
+        setCurrentPage(1);
+      }
+
+      toast.success(isEditing ? "Institute Updated" : "Institute Added");
+
       resetForm();
-      await loadData();
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Unable to save institute.",
@@ -708,7 +697,7 @@ export default function InstitutesManager() {
         </div>
 
         {loading ? (
-          <p className="p-6 text-sm text-zinc-500">Loading institutes...</p>
+          <InstituteTableSkeleton />
         ) : filteredInstitutes.length === 0 ? (
           <div className="px-5 py-12 text-center">
             <p className="text-sm font-medium text-zinc-700">
@@ -748,14 +737,15 @@ export default function InstitutesManager() {
 
                 {/* Records */}
                 <div className="divide-y divide-zinc-100">
-                  {paginatedInstitutes.map((institute) => {
+                  {paginatedInstitutes.map((institute, index) => {
                     const areaNames = getReferenceNames(institute.areas);
                     const campusNames = getReferenceNames(institute.campuses);
 
                     return (
                       <div
                         key={institute._id}
-                        className="grid grid-cols-[70px_minmax(190px,1.5fr)_110px_minmax(150px,1fr)_minmax(160px,1.2fr)_150px] items-center gap-4 px-5 py-4 transition hover:bg-zinc-50/70"
+                        className="institute-row-enter grid grid-cols-[70px_minmax(190px,1.5fr)_110px_minmax(150px,1fr)_minmax(160px,1.2fr)_150px] items-center gap-4 px-5 py-4 transition-colors hover:bg-zinc-50/70"
+                        style={{ animationDelay: `${index * 35}ms` }}
                       >
                         {/* Logo */}
                         <div>
@@ -809,13 +799,13 @@ export default function InstitutesManager() {
                               {areaNames.slice(0, 2).map((name, index) => (
                                 <span
                                   key={`${name}-${index}`}
-                                  className="max-w-full truncate rounded-md bg-zinc-100 px-2 py-1 text-xs text-zinc-600"
+                                  className="max-w-full truncate rounded-md font-medium bg-zinc-200 px-2 py-1 text-xs text-zinc-600"
                                 >
                                   {name}
                                 </span>
                               ))}
                               {areaNames.length > 2 && (
-                                <span className="rounded-md bg-zinc-100 px-2 py-1 text-xs text-zinc-500">
+                                <span className="rounded-md bg-zinc-200 font-medium px-2 py-1 text-xs text-zinc-500">
                                   +{areaNames.length - 2}
                                 </span>
                               )}
@@ -834,13 +824,13 @@ export default function InstitutesManager() {
                               {campusNames.slice(0, 2).map((name, index) => (
                                 <span
                                   key={`${name}-${index}`}
-                                  className="max-w-full truncate rounded-md bg-zinc-100 px-2 py-1 text-xs text-zinc-600"
+                                  className="max-w-full truncate rounded-md font-medium bg-zinc-200 px-2 py-1 text-xs text-zinc-600"
                                 >
                                   {name}
                                 </span>
                               ))}
                               {campusNames.length > 2 && (
-                                <span className="rounded-md bg-zinc-100 px-2 py-1 text-xs text-zinc-500">
+                                <span className="rounded-md bg-zinc-200 font-medium px-2 py-1 text-xs text-zinc-500">
                                   +{campusNames.length - 2}
                                 </span>
                               )}
@@ -949,6 +939,49 @@ export default function InstitutesManager() {
         }}
         onConfirm={deleteInstitute}
       />
+    </div>
+  );
+}
+
+function InstituteTableSkeleton() {
+  return (
+    <div className="divide-y divide-zinc-100">
+      {Array.from({ length: 10 }).map((_, index) => (
+        <div
+          key={index}
+          className="grid animate-pulse grid-cols-[70px_minmax(190px,1.5fr)_110px_minmax(150px,1fr)_minmax(160px,1.2fr)_150px] items-center gap-4 px-5 py-4"
+        >
+          {/* Logo */}
+          <div className="size-12 rounded-lg bg-zinc-200" />
+
+          {/* Institute */}
+          <div className="space-y-2">
+            <div className="h-3.5 w-32 rounded bg-zinc-200" />
+            <div className="h-3 w-24 rounded bg-zinc-100" />
+          </div>
+
+          {/* Status */}
+          <div className="h-6 w-16 rounded-md bg-zinc-200" />
+
+          {/* Areas */}
+          <div className="flex gap-1.5">
+            <div className="h-6 w-16 rounded-md bg-zinc-200" />
+            <div className="h-6 w-12 rounded-md bg-zinc-100" />
+          </div>
+
+          {/* Campuses */}
+          <div className="flex gap-1.5">
+            <div className="h-6 w-20 rounded-md bg-zinc-200" />
+            <div className="h-6 w-12 rounded-md bg-zinc-100" />
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2">
+            <div className="h-8 w-14 rounded-lg bg-zinc-200" />
+            <div className="h-8 w-16 rounded-lg bg-zinc-100" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
