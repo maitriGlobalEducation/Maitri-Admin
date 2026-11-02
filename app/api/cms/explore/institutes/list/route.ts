@@ -5,8 +5,7 @@ import { authorizeAdmin } from "@/lib/api-auth";
 import ExploreInstitute from "@/models/ExploreInstitute";
 import ExploreArea from "@/models/ExploreArea";
 import ExploreCampus from "@/models/ExploreCampus";
-import ExploreBrand from "@/models/ExploreBrand";
-import mongoose from "mongoose";
+import "@/models/ExploreBrand";
 
 const PAGE_SIZE = 10;
 
