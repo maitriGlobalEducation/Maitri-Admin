@@ -9,6 +9,7 @@ import {
   getPaginationParams,
   paginationResponse,
 } from "@/lib/explore-pagination";
+import { createSlug } from "@/lib/slug";
 
 export async function GET(request: NextRequest) {
   try {
@@ -74,7 +75,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const courseCategory = await ExploreCourseCategory.create({ name });
+    const courseCategory = await ExploreCourseCategory.create({
+      name,
+      slug: createSlug(name),
+    });
 
     await revalidatePublicpage();
 

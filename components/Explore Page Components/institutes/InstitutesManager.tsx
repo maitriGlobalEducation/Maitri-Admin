@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   getInstitutesPage,
@@ -85,7 +85,6 @@ function getReferenceNames(records: (string | SelectOption)[] = []): string[] {
 
 export default function InstitutesManager() {
   const [institutes, setInstitutes] = useState<InstituteRecord[]>([]);
-  // const [categories, setCategories] = useState<Category[]>([]);
 
   const [areas, setAreas] = useState<SelectOption[]>([]);
   const [brands, setBrands] = useState<SelectOption[]>([]);
@@ -332,9 +331,28 @@ export default function InstitutesManager() {
         ...form,
         name: form.name.trim(),
         slug: form.slug.trim(),
-        areas: form.areas,
-        brands: form.brands,
-        campuses: form.campuses,
+
+        areas: areas
+          .filter((area) => form.areas.includes(area._id))
+          .map((area) => ({
+            areaId: area._id,
+            slug: area.slug,
+          })),
+
+        brands: brands
+          .filter((brand) => form.brands.includes(brand._id))
+          .map((brand) => ({
+            brandId: brand._id,
+            slug: brand.slug,
+          })),
+
+        campuses: availableCampuses
+          .filter((campus) => form.campuses.includes(campus._id))
+          .map((campus) => ({
+            campusId: campus._id,
+            slug: campus.slug,
+          })),
+
         metaKeywords,
       };
 

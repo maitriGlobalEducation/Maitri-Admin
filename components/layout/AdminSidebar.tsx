@@ -344,19 +344,20 @@ export default function AdminSidebar({ admin }: AdminSidebarProps) {
                         <div className="ml-4 mt-1 space-y-1 border-l border-zinc-200 pl-3">
                           {section.items?.map((item) => {
                             const ItemIcon = item.icon;
-                            const disableCourses =
-                              item.label.toLowerCase() === "courses";
+                            // const disableCourses =
+                            //   item.label.toLowerCase() === "courses";
 
                             const active =
                               pathname === item.href ||
                               pathname.startsWith(`${item.href}/`);
 
                             const className = `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition ${
-                              disableCourses
-                                ? "cursor-not-allowed opacity-40"
-                                : active
-                                  ? "bg-zinc-100 font-medium text-zinc-950"
-                                  : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"
+                              // disableCourses
+                              //   ? "cursor-not-allowed opacity-40"
+                              //   :
+                              active
+                                ? "bg-zinc-100 font-medium text-zinc-950"
+                                : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"
                             }`;
 
                             const content = (
@@ -366,15 +367,7 @@ export default function AdminSidebar({ admin }: AdminSidebarProps) {
                               </>
                             );
 
-                            return disableCourses ? (
-                              <span
-                                key={item.href}
-                                className={className}
-                                aria-disabled="true"
-                              >
-                                {content}
-                              </span>
-                            ) : (
+                            return (
                               <Link
                                 key={item.href}
                                 href={item.href}

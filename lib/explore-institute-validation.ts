@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import ExploreCategory from "@/models/ExploreCategory";
+
 import ExploreArea from "@/models/ExploreArea";
 import ExploreBrand from "@/models/ExploreBrand";
 import ExploreCampus from "@/models/ExploreCampus";
@@ -49,22 +49,27 @@ export function isTipTapDocument(
   return document.type === "doc" && Array.isArray(document.content);
 }
 
-async function validateIds(
+type ReferenceDocument = {
+  _id: mongoose.Types.ObjectId;
+  slug: string;
+};
+
+async function validateIds<T extends ReferenceDocument>(
   value: unknown,
   label: string,
-  countExisting: (ids: string[]) => Promise<number>,
+  findDocuments: (ids: string[]) => Promise<T[]>,
   required = false,
-): Promise<{ ids: string[] | null; error: string | null }> {
+): Promise<{ documents: T[] | null; error: string | null }> {
   if (!Array.isArray(value)) {
     return {
-      ids: null,
+      documents: null,
       error: `${label} must be an array.`,
     };
   }
 
   if (required && value.length === 0) {
     return {
-      ids: null,
+      documents: null,
       error: `Select at least one ${label.toLowerCase()}.`,
     };
   }
@@ -76,7 +81,7 @@ async function validateIds(
 
   if (ids.length !== value.length) {
     return {
-      ids: null,
+      documents: null,
       error: `One or more ${label.toLowerCase()} IDs are invalid.`,
     };
   }
@@ -85,23 +90,42 @@ async function validateIds(
 
   if (uniqueIds.length !== ids.length) {
     return {
-      ids: null,
+      documents: null,
       error: `Duplicate ${label.toLowerCase()} selections are not allowed.`,
     };
   }
 
-  if (uniqueIds.length) {
-    const count = await countExisting(uniqueIds);
-
-    if (count !== uniqueIds.length) {
-      return {
-        ids: null,
-        error: `One or more selected ${label.toLowerCase()} do not exist.`,
-      };
-    }
+  if (!uniqueIds.length) {
+    return { documents: [], error: null };
   }
 
-  return { ids: uniqueIds, error: null };
+  const documents = await findDocuments(uniqueIds);
+
+  if (documents.length !== uniqueIds.length) {
+    return {
+      documents: null,
+      error: `One or more selected ${label.toLowerCase()} do not exist.`,
+    };
+  }
+
+  // Preserve the order in which the IDs were selected.
+  const documentsById = new Map(
+    documents.map((document) => [document._id.toString(), document]),
+  );
+
+  const orderedDocuments = uniqueIds.map((id) => documentsById.get(id));
+
+  if (orderedDocuments.some((document) => !document)) {
+    return {
+      documents: null,
+      error: `Unable to validate selected ${label.toLowerCase()}.`,
+    };
+  }
+
+  return {
+    documents: orderedDocuments as T[],
+    error: null,
+  };
 }
 
 export async function validateInstituteReferences(
@@ -109,15 +133,21 @@ export async function validateInstituteReferences(
 ) {
   const [areas, brands, campuses] = await Promise.all([
     validateIds(body.areas ?? [], "Areas", (ids) =>
-      ExploreArea.countDocuments({ _id: { $in: ids } }),
+      ExploreArea.find({ _id: { $in: ids } })
+        .select("_id slug")
+        .lean(),
     ),
 
     validateIds(body.brands ?? [], "Brands", (ids) =>
-      ExploreBrand.countDocuments({ _id: { $in: ids } }),
+      ExploreBrand.find({ _id: { $in: ids } })
+        .select("_id slug")
+        .lean(),
     ),
 
     validateIds(body.campuses ?? [], "Campuses", (ids) =>
-      ExploreCampus.countDocuments({ _id: { $in: ids } }),
+      ExploreCampus.find({ _id: { $in: ids } })
+        .select("_id slug")
+        .lean(),
     ),
   ]);
 
@@ -132,9 +162,20 @@ export async function validateInstituteReferences(
 
   return {
     data: {
-      areas: areas.ids!,
-      brands: brands.ids!,
-      campuses: campuses.ids!,
+      areas: areas.documents!.map((area) => ({
+        areaId: area._id,
+        slug: area.slug,
+      })),
+
+      brands: brands.documents!.map((brand) => ({
+        brandId: brand._id,
+        slug: brand.slug,
+      })),
+
+      campuses: campuses.documents!.map((campus) => ({
+        campusId: campus._id,
+        slug: campus.slug,
+      })),
     },
     error: null,
   };
@@ -146,11 +187,13 @@ export function getInstitutePayload(body: Record<string, unknown>) {
   const status = body.status;
   const sortOrder = Number(body.sortOrder ?? 0);
 
-  // Correct slug validation: the * is a quantifier, not an escaped character.
   const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
   if (!name) {
-    return { data: null, error: "Institute name is required." };
+    return {
+      data: null,
+      error: "Institute name is required.",
+    };
   }
 
   if (!slug || !slugRegex.test(slug)) {
@@ -179,7 +222,10 @@ export function getInstitutePayload(body: Record<string, unknown>) {
   const banner = cleanImage(body.banner);
 
   if (!logo) {
-    return { data: null, error: "A valid institute logo is required." };
+    return {
+      data: null,
+      error: "A valid institute logo is required.",
+    };
   }
 
   const content = body.content;
@@ -191,9 +237,6 @@ export function getInstitutePayload(body: Record<string, unknown>) {
     };
   }
 
-  const metaTitle = cleanString(body.metaTitle);
-  const metaDescription = cleanString(body.metaDescription);
-
   return {
     data: {
       name,
@@ -203,8 +246,8 @@ export function getInstitutePayload(body: Record<string, unknown>) {
       banner,
       overview: cleanString(body.overview),
       content,
-      metaTitle,
-      metaDescription,
+      metaTitle: cleanString(body.metaTitle),
+      metaDescription: cleanString(body.metaDescription),
       metaKeywords: cleanKeywords(body.metaKeywords),
       focusKeyword: cleanString(body.focusKeyword),
       sortOrder,

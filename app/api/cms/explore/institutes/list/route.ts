@@ -21,10 +21,6 @@ export async function GET(request: NextRequest) {
 
     await connectDB();
 
-    console.log("Mongoose connection:", mongoose.connection.name);
-    console.log("Registered models:", mongoose.modelNames());
-    console.log("Brand model registered:", mongoose.models.ExploreBrand);
-
     const { searchParams } = new URL(request.url);
 
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
@@ -46,27 +42,19 @@ export async function GET(request: NextRequest) {
         { name: regex },
         { slug: regex },
         { status: regex },
-        { areas: { $in: matchingAreas } },
-        { campuses: { $in: matchingCampuses } },
+        { "areas.areaId": { $in: matchingAreas } },
+        { "campuses.campusId": { $in: matchingCampuses } },
       ];
     }
-
-    console.log("Production model check:", {
-      connectionName: mongoose.connection.name,
-      registeredModels: mongoose.modelNames(),
-      brandModel: !!mongoose.models.ExploreBrand,
-      instituteConnection: ExploreInstitute.db.name,
-      brandConnection: ExploreBrand.db.name,
-    });
 
     const [institutes, total] = await Promise.all([
       ExploreInstitute.find(filter)
         .select(
           "name slug logo status featured areas brands campuses sortOrder createdAt",
         )
-        .populate("areas", "name")
-        .populate("brands", "name")
-        .populate("campuses", "name city country")
+        .populate("areas.areaId", "name slug")
+        .populate("brands.brandId", "name slug")
+        .populate("campuses.campusId", "name slug city country")
         .sort({ sortOrder: 1, createdAt: -1 })
         .skip(skip)
         .limit(PAGE_SIZE)
@@ -75,9 +63,34 @@ export async function GET(request: NextRequest) {
       ExploreInstitute.countDocuments(filter),
     ]);
 
+    function flattenReferences(
+      references: Record<string, unknown>[] = [],
+      referenceKey: string,
+    ) {
+      return references.map((reference) => {
+        const populated = reference[referenceKey];
+
+        if (populated && typeof populated === "object") {
+          return {
+            ...(populated as Record<string, unknown>),
+            slug: reference.slug,
+          };
+        }
+
+        return reference;
+      });
+    }
+
+    const formattedInstitutes = institutes.map((institute) => ({
+      ...institute,
+      areas: flattenReferences(institute.areas, "areaId"),
+      brands: flattenReferences(institute.brands, "brandId"),
+      campuses: flattenReferences(institute.campuses, "campusId"),
+    }));
+
     return NextResponse.json({
       success: true,
-      institutes,
+      institutes: formattedInstitutes,
       pagination: {
         page,
         pageSize: PAGE_SIZE,

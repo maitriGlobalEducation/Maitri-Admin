@@ -5,6 +5,7 @@ import { revalidatePublicpage } from "@/services/revalidation.service";
 import ExploreCourseCategory from "@/models/ExploreCourseCategory";
 import { cleanText } from "@/lib/explore-resource";
 import { connectDB } from "@/lib/mongodb";
+import { createSlug } from "@/lib/slug";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -36,8 +37,16 @@ export async function PUT(request: NextRequest, { params }: Context) {
 
     const courseCategory = await ExploreCourseCategory.findByIdAndUpdate(
       id,
-      { $set: { name } },
-      { new: true, runValidators: true },
+      {
+        $set: {
+          name,
+          slug: createSlug(name),
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
     );
 
     if (!courseCategory) {

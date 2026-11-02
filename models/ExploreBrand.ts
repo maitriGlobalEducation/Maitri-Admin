@@ -8,6 +8,13 @@ const ExploreBrandSchema = new Schema(
       trim: true,
       unique: true,
     },
+    slug: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
     image: {
       url: { type: String, required: true },
       publicId: { type: String, required: true },

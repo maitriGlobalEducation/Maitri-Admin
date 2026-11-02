@@ -2,12 +2,23 @@ import mongoose, { Schema } from "mongoose";
 
 const ExploreCourseCategorySchema = new Schema(
   {
-    name: { type: String, required: true, trim: true },
+    name: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
+
+    slug: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
   },
   { timestamps: true },
 );
-
-ExploreCourseCategorySchema.index({ name: 1 }, { unique: true });
 
 const ExploreCourseCategory =
   mongoose.models.ExploreCourseCategory ||

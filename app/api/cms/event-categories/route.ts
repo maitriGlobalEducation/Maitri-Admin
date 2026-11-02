@@ -2,16 +2,7 @@ import { NextResponse } from "next/server";
 import { authorizeAdmin } from "@/lib/api-auth";
 import { connectDB } from "@/lib/mongodb";
 import EventCategory from "@/models/EventCategory";
-
-function createSlug(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
+import { createSlug } from "@/lib/slug";
 
 export async function GET() {
   try {

@@ -5,6 +5,7 @@ import { revalidatePublicpage } from "@/services/revalidation.service";
 import ExploreCampus from "@/models/ExploreCampus";
 import { cleanText, validImage } from "@/lib/explore-resource";
 import { connectDB } from "@/lib/mongodb";
+import { createSlug } from "@/lib/slug";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -25,6 +26,7 @@ export async function PUT(request: NextRequest, { params }: Context) {
     await connectDB();
 
     const body = await request.json();
+
     const name = cleanText(body.name);
     const city = cleanText(body.city);
     const country = cleanText(body.country);
@@ -40,11 +42,7 @@ export async function PUT(request: NextRequest, { params }: Context) {
       );
     }
 
-    const campus = await ExploreCampus.findByIdAndUpdate(
-      id,
-      { $set: { name, city, country, image } },
-      { new: true, runValidators: true },
-    );
+    const campus = await ExploreCampus.findById(id);
 
     if (!campus) {
       return NextResponse.json(
@@ -53,11 +51,51 @@ export async function PUT(request: NextRequest, { params }: Context) {
       );
     }
 
+    // Preserve the existing slug unless a slug is explicitly provided.
+    const slug = createSlug(
+      body.slug !== undefined ? cleanText(body.slug) : campus.slug || name,
+    );
+
+    if (!slug) {
+      return NextResponse.json(
+        { success: false, message: "A valid slug is required." },
+        { status: 400 },
+      );
+    }
+
+    const existingCampus = await ExploreCampus.findOne({
+      slug,
+      _id: { $ne: id },
+    });
+
+    if (existingCampus) {
+      return NextResponse.json(
+        { success: false, message: "This slug is already in use." },
+        { status: 409 },
+      );
+    }
+
+    campus.name = name;
+    campus.slug = slug;
+    campus.city = city;
+    campus.country = country;
+    campus.image = image;
+
+    await campus.save();
+
     await revalidatePublicpage();
 
     return NextResponse.json({ success: true, campus });
   } catch (error) {
     console.error("PUT campus:", error);
+
+    if ((error as { code?: number }).code === 11000) {
+      return NextResponse.json(
+        { success: false, message: "This slug is already in use." },
+        { status: 409 },
+      );
+    }
+
     return NextResponse.json(
       { success: false, message: "Failed to update campus." },
       { status: 500 },

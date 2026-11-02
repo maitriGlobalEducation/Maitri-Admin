@@ -3,6 +3,13 @@ import mongoose, { Schema } from "mongoose";
 const CampusSchema = new Schema(
   {
     name: { type: String, required: true, trim: true },
+    slug: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
     image: {
       url: { type: String, default: "" },
       publicId: { type: String, default: "" },

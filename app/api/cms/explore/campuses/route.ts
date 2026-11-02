@@ -9,6 +9,7 @@ import {
   getPaginationParams,
   paginationResponse,
 } from "@/lib/explore-pagination";
+import { createSlug } from "@/lib/slug";
 
 export async function GET(request: NextRequest) {
   try {
@@ -70,23 +71,36 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     const body = await request.json();
+
     const name = cleanText(body.name);
     const city = cleanText(body.city);
     const country = cleanText(body.country);
     const image = validImage(body.image);
 
-    if (!name || !city || !country || !image) {
+    const slug = createSlug(cleanText(body.slug) || name);
+
+    if (!name || !city || !country || !image || !slug) {
       return NextResponse.json(
         {
           success: false,
-          message: "Name, city, country and a valid image are required.",
+          message: "Name, city, country, image and a valid slug are required.",
         },
         { status: 400 },
       );
     }
 
+    const existingCampus = await ExploreCampus.findOne({ slug });
+
+    if (existingCampus) {
+      return NextResponse.json(
+        { success: false, message: "This slug is already in use." },
+        { status: 409 },
+      );
+    }
+
     const campus = await ExploreCampus.create({
       name,
+      slug,
       city,
       country,
       image,
@@ -97,6 +111,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, campus }, { status: 201 });
   } catch (error) {
     console.error("POST campus:", error);
+
+    if ((error as { code?: number }).code === 11000) {
+      return NextResponse.json(
+        { success: false, message: "This slug is already in use." },
+        { status: 409 },
+      );
+    }
+
     return NextResponse.json(
       { success: false, message: "Failed to create campus." },
       { status: 500 },

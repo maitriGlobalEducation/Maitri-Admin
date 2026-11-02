@@ -9,6 +9,7 @@ import {
   getPaginationParams,
   paginationResponse,
 } from "@/lib/explore-pagination";
+import { createSlug } from "@/lib/slug";
 
 export async function GET(request: NextRequest) {
   try {
@@ -68,7 +69,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const area = await ExploreArea.create({ name, image });
+    const slug = createSlug(
+      typeof body.slug === "string" && body.slug.trim() ? body.slug : name,
+    );
+
+    if (!slug) {
+      return NextResponse.json(
+        { success: false, message: "A valid slug is required." },
+        { status: 400 },
+      );
+    }
+
+    const existingSlug = await ExploreArea.findOne({ slug }).lean();
+
+    if (existingSlug) {
+      return NextResponse.json(
+        { success: false, message: "An area with this slug already exists." },
+        { status: 409 },
+      );
+    }
+
+    const area = await ExploreArea.create({
+      name,
+      slug,
+      image,
+    });
 
     await revalidatePublicpage();
 
@@ -76,12 +101,16 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if ((error as { code?: number })?.code === 11000) {
       return NextResponse.json(
-        { success: false, message: "An area with this name already exists." },
+        {
+          success: false,
+          message: "An area with this name or slug already exists.",
+        },
         { status: 409 },
       );
     }
 
     console.error("POST area:", error);
+
     return NextResponse.json(
       { success: false, message: "Failed to create area." },
       { status: 500 },

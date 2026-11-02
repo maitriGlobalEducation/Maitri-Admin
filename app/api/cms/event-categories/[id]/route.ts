@@ -3,20 +3,11 @@ import { NextResponse } from "next/server";
 import { authorizeAdmin } from "@/lib/api-auth";
 import { connectDB } from "@/lib/mongodb";
 import EventCategory from "@/models/EventCategory";
+import { createSlug } from "@/lib/slug";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
-
-function createSlug(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
 
 function isDuplicateKeyError(error: unknown) {
   return (

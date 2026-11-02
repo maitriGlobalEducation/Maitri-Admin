@@ -3,18 +3,9 @@ import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import BlogCategory from "@/models/BlogCategory";
 import { getAuthenticatedAdmin } from "@/lib/auth";
+import { createSlug } from "@/lib/slug";
 
 export const runtime = "nodejs";
-
-function createSlug(value: string) {
-  return value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
 
 function escapeRegex(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

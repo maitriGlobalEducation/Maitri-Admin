@@ -14,9 +14,9 @@ import {
 
 const populateInstitute = (query: any) =>
   query
-    .populate("areas", "name")
-    .populate("brands", "name")
-    .populate("campuses", "name city country");
+    .populate("areas.areaId", "name slug")
+    .populate("brands.brandId", "name slug")
+    .populate("campuses.campusId", "name slug city country");
 
 export async function GET() {
   try {

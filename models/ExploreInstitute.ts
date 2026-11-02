@@ -60,22 +60,49 @@ const ExploreInstituteSchema = new Schema(
     // Independent Explore relationships.
     areas: [
       {
-        type: Schema.Types.ObjectId,
-        ref: "ExploreArea",
+        areaId: {
+          type: Schema.Types.ObjectId,
+          ref: "ExploreArea",
+          required: true,
+        },
+        slug: {
+          type: String,
+          required: true,
+          trim: true,
+          lowercase: true,
+        },
       },
     ],
 
     brands: [
       {
-        type: Schema.Types.ObjectId,
-        ref: "ExploreBrand",
+        brandId: {
+          type: Schema.Types.ObjectId,
+          ref: "ExploreBrand",
+          required: true,
+        },
+        slug: {
+          type: String,
+          required: true,
+          trim: true,
+          lowercase: true,
+        },
       },
     ],
 
     campuses: [
       {
-        type: Schema.Types.ObjectId,
-        ref: "ExploreCampus",
+        campusId: {
+          type: Schema.Types.ObjectId,
+          ref: "ExploreCampus",
+          required: true,
+        },
+        slug: {
+          type: String,
+          required: true,
+          trim: true,
+          lowercase: true,
+        },
       },
     ],
 

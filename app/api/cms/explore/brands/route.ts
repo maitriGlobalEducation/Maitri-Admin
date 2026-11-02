@@ -9,6 +9,7 @@ import {
   getPaginationParams,
   paginationResponse,
 } from "@/lib/explore-pagination";
+import { createSlug } from "@/lib/slug";
 
 export async function GET(request: NextRequest) {
   const { response } = await authorizeAdmin();
@@ -63,17 +64,31 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     const body = await request.json();
+
     const name = cleanText(body.name);
     const image = validImage(body.image);
+    const slug = createSlug(cleanText(body.slug) || name);
 
-    if (!name || !image) {
+    if (!name || !image || !slug) {
       return NextResponse.json(
-        { success: false, message: "Name and image are required." },
+        {
+          success: false,
+          message: "Name, image and a valid slug are required.",
+        },
         { status: 400 },
       );
     }
 
-    const brand = await ExploreBrand.create({ name, image });
+    const existingSlug = await ExploreBrand.findOne({ slug });
+
+    if (existingSlug) {
+      return NextResponse.json(
+        { success: false, message: "This slug is already in use." },
+        { status: 409 },
+      );
+    }
+
+    const brand = await ExploreBrand.create({ name, slug, image });
 
     await revalidatePublicpage();
 
@@ -86,7 +101,10 @@ export async function POST(request: NextRequest) {
       error.code === 11000
     ) {
       return NextResponse.json(
-        { success: false, message: "A brand with this name already exists." },
+        {
+          success: false,
+          message: "A brand with this name or slug already exists.",
+        },
         { status: 409 },
       );
     }

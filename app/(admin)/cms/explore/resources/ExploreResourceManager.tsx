@@ -2,9 +2,9 @@
 
 import MediaUploader from "@/components/cms/MediaUploader";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
-import { uploadImage } from "@/services/media.service";
+import { createSlug } from "@/lib/slug";
 import { Search, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
 type ResourceKind = "campuses" | "course-categories" | "areas" | "brands";
@@ -17,6 +17,7 @@ type InstituteOption = {
 type Resource = {
   _id: string;
   name: string;
+  slug: string;
   city?: string;
   country?: string;
   image?: { url?: string; publicId?: string } | null;
@@ -32,6 +33,7 @@ const resourceLabel: Record<ResourceKind, string> = {
 
 type FormState = {
   name: string;
+  slug: string;
   city: string;
   country: string;
   imageUrl: string;
@@ -41,6 +43,7 @@ type FormState = {
 
 const blankForm: FormState = {
   name: "",
+  slug: "",
   city: "",
   country: "",
   imageUrl: "",
@@ -132,25 +135,6 @@ export default function ExploreResourceManager({
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [pageLoading, setPageLoading] = useState(false);
-
-  const filteredItems = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-
-    if (!query) return items;
-
-    return items.filter((item) => {
-      const searchableValues = [
-        item.name,
-        item.city,
-        item.country,
-        settings.hasInstitute ? getInstituteName(item) : "",
-      ];
-
-      return searchableValues.some((value) =>
-        value?.toLowerCase().includes(query),
-      );
-    });
-  }, [items, searchQuery, settings.hasInstitute]);
 
   const pageCache = useRef(
     new Map<
@@ -325,6 +309,7 @@ export default function ExploreResourceManager({
 
     setForm({
       name: item.name ?? "",
+      slug: item.slug ?? "",
       city: item.city ?? "",
       country: item.country ?? "",
       imageUrl: item.image?.url ?? "",
@@ -359,6 +344,7 @@ export default function ExploreResourceManager({
     try {
       const payload: Record<string, unknown> = {
         name: form.name.trim(),
+        slug: form.slug.trim(),
       };
 
       if (settings.hasImage) {
@@ -517,7 +503,15 @@ export default function ExploreResourceManager({
             className={fieldClass}
             required
             value={form.name}
-            onChange={(event) => setField("name", event.target.value)}
+            onChange={(event) => {
+              const name = event.target.value;
+
+              setField("name", name);
+
+              if (!editingId) {
+                setField("slug", createSlug(name));
+              }
+            }}
             placeholder={
               kind === "campuses"
                 ? "Milan Campus"
@@ -526,6 +520,26 @@ export default function ExploreResourceManager({
                   : "Undergraduate"
             }
           />
+        </div>
+
+        <div>
+          <label className={labelClass}>
+            URL Slug <span className="text-red-500">*</span>
+          </label>
+
+          <input
+            className={fieldClass}
+            required
+            value={form.slug}
+            onChange={(event) =>
+              setField("slug", createSlug(event.target.value))
+            }
+            placeholder="fashion-and-design"
+          />
+
+          <p className="mt-1 text-xs text-zinc-500">
+            Used in the URL. Lowercase letters, numbers, and hyphens only.
+          </p>
         </div>
 
         {settings.hasInstitute && (

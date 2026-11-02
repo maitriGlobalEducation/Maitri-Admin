@@ -5,6 +5,7 @@ import { revalidatePublicpage } from "@/services/revalidation.service";
 import ExploreArea from "@/models/ExploreArea";
 import { cleanText, validImage } from "@/lib/explore-resource";
 import { connectDB } from "@/lib/mongodb";
+import { createSlug } from "@/lib/slug";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -35,31 +36,61 @@ export async function PUT(request: NextRequest, { params }: Context) {
       );
     }
 
-    const area = await ExploreArea.findByIdAndUpdate(
-      id,
-      { $set: { name, image } },
-      { new: true, runValidators: true },
-    );
+    const currentArea = await ExploreArea.findById(id);
 
-    if (!area) {
+    if (!currentArea) {
       return NextResponse.json(
         { success: false, message: "Area not found." },
         { status: 404 },
       );
     }
 
+    const slug =
+      typeof body.slug === "string" && body.slug.trim()
+        ? createSlug(body.slug)
+        : currentArea.slug || createSlug(name);
+
+    if (!slug) {
+      return NextResponse.json(
+        { success: false, message: "A valid slug is required." },
+        { status: 400 },
+      );
+    }
+
+    const existingSlug = await ExploreArea.findOne({
+      slug,
+      _id: { $ne: id },
+    }).lean();
+
+    if (existingSlug) {
+      return NextResponse.json(
+        { success: false, message: "An area with this slug already exists." },
+        { status: 409 },
+      );
+    }
+
+    currentArea.name = name;
+    currentArea.slug = slug;
+    currentArea.image = image;
+
+    await currentArea.save();
+
     await revalidatePublicpage();
 
-    return NextResponse.json({ success: true, area });
+    return NextResponse.json({ success: true, area: currentArea });
   } catch (error) {
     if ((error as { code?: number })?.code === 11000) {
       return NextResponse.json(
-        { success: false, message: "An area with this name already exists." },
+        {
+          success: false,
+          message: "An area with this name or slug already exists.",
+        },
         { status: 409 },
       );
     }
 
     console.error("PUT area:", error);
+
     return NextResponse.json(
       { success: false, message: "Failed to update area." },
       { status: 500 },
