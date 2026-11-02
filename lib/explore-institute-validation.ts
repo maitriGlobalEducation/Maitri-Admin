@@ -128,26 +128,88 @@ async function validateIds<T extends ReferenceDocument>(
   };
 }
 
+function extractReferenceIds(
+  value: unknown,
+  key: "areaId" | "brandId" | "campusId",
+): unknown {
+  if (!Array.isArray(value)) return value;
+
+  return value.map((reference) => {
+    if (typeof reference === "string") return reference;
+
+    if (reference && typeof reference === "object" && key in reference) {
+      return reference[key];
+    }
+
+    return reference;
+  });
+}
+
 export async function validateInstituteReferences(
   body: Record<string, unknown>,
 ) {
+  const extractIds = (references: unknown): string[] => {
+    if (!Array.isArray(references)) return [];
+
+    return references
+      .map((reference) => {
+        if (typeof reference === "string") return reference;
+
+        if (
+          reference &&
+          typeof reference === "object" &&
+          "areaId" in reference
+        ) {
+          return String(reference.areaId);
+        }
+
+        if (
+          reference &&
+          typeof reference === "object" &&
+          "brandId" in reference
+        ) {
+          return String(reference.brandId);
+        }
+
+        if (
+          reference &&
+          typeof reference === "object" &&
+          "campusId" in reference
+        ) {
+          return String(reference.campusId);
+        }
+
+        return "";
+      })
+      .filter(Boolean);
+  };
+
   const [areas, brands, campuses] = await Promise.all([
-    validateIds(body.areas ?? [], "Areas", (ids) =>
-      ExploreArea.find({ _id: { $in: ids } })
-        .select("_id slug")
-        .lean(),
+    validateIds(
+      extractReferenceIds(body.areas ?? [], "areaId"),
+      "Areas",
+      (ids) =>
+        ExploreArea.find({ _id: { $in: ids } })
+          .select("_id slug")
+          .lean(),
     ),
 
-    validateIds(body.brands ?? [], "Brands", (ids) =>
-      ExploreBrand.find({ _id: { $in: ids } })
-        .select("_id slug")
-        .lean(),
+    validateIds(
+      extractReferenceIds(body.brands ?? [], "brandId"),
+      "Brands",
+      (ids) =>
+        ExploreBrand.find({ _id: { $in: ids } })
+          .select("_id slug")
+          .lean(),
     ),
 
-    validateIds(body.campuses ?? [], "Campuses", (ids) =>
-      ExploreCampus.find({ _id: { $in: ids } })
-        .select("_id slug")
-        .lean(),
+    validateIds(
+      extractReferenceIds(body.campuses ?? [], "campusId"),
+      "Campuses",
+      (ids) =>
+        ExploreCampus.find({ _id: { $in: ids } })
+          .select("_id slug")
+          .lean(),
     ),
   ]);
 

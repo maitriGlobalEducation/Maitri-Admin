@@ -93,6 +93,7 @@ export default function InstitutesManager() {
   );
 
   const [form, setForm] = useState<InstituteForm>(emptyForm);
+  console.log({ form });
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -283,8 +284,11 @@ export default function InstitutesManager() {
   }
 
   function startEdit(institute: InstituteRecord) {
+    console.log("Selected institute:", institute.name);
+    console.log("Selected keywords:", institute.metaKeywords);
     setEditingId(institute._id);
     setManualSlug(true);
+    setMetaKeywordsInput(institute.metaKeywords?.join(", ") ?? "");
 
     setForm({
       name: institute.name,

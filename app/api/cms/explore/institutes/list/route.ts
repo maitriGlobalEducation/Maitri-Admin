@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
     const [institutes, total] = await Promise.all([
       ExploreInstitute.find(filter)
         .select(
-          "name slug logo status featured areas brands campuses sortOrder createdAt",
+          "name slug logo content status featured areas brands campuses metaTitle metaDescription metaKeywords focusKeyword sortOrder createdAt",
         )
         .populate("areas.areaId", "name slug")
         .populate("brands.brandId", "name slug")

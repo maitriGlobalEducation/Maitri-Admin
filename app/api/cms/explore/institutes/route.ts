@@ -30,6 +30,14 @@ export async function GET() {
       .sort({ sortOrder: 1, createdAt: -1 })
       .lean();
 
+    // console.log(
+    //   "Institute content from MongoDB:",
+    //   institutes.map((institute: { name: string; content: any }) => ({
+    //     name: institute.name,
+    //     content: institute.content,
+    //   })),
+    // );
+
     return NextResponse.json({
       success: true,
       institutes,

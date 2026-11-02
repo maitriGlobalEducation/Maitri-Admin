@@ -32,6 +32,23 @@ interface BlogEditorProps {
   onChange: (content: Record<string, unknown>) => void;
 }
 
+const EMPTY_TIPTAP_DOCUMENT = {
+  type: "doc",
+  content: [{ type: "paragraph" }],
+};
+
+function isValidTiptapDocument(
+  value: unknown,
+): value is Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  const document = value as Record<string, unknown>;
+
+  return document.type === "doc" && Array.isArray(document.content);
+}
+
 export default function BlogEditor({ content, onChange }: BlogEditorProps) {
   const editor = useEditor({
     extensions: [
@@ -68,10 +85,7 @@ export default function BlogEditor({ content, onChange }: BlogEditorProps) {
       TableCell,
     ],
 
-    content: content ?? {
-      type: "doc",
-      content: [{ type: "paragraph" }],
-    },
+    content: isValidTiptapDocument(content) ? content : EMPTY_TIPTAP_DOCUMENT,
 
     immediatelyRender: false,
 
@@ -88,13 +102,17 @@ export default function BlogEditor({ content, onChange }: BlogEditorProps) {
   });
 
   useEffect(() => {
-    if (!editor || !content) return;
+    if (!editor) return;
+
+    const normalizedContent = isValidTiptapDocument(content)
+      ? content
+      : EMPTY_TIPTAP_DOCUMENT;
 
     const currentContent = editor.getJSON();
 
-    if (JSON.stringify(currentContent) !== JSON.stringify(content)) {
+    if (JSON.stringify(currentContent) !== JSON.stringify(normalizedContent)) {
       const timeoutId = window.setTimeout(() => {
-        editor.commands.setContent(content, {
+        editor.commands.setContent(normalizedContent, {
           emitUpdate: false,
         });
       }, 0);

@@ -22,6 +22,24 @@ const populateInstitute = (query: any) =>
     .populate("brands.brandId", "name slug")
     .populate("campuses.campusId", "name slug city country");
 
+function flattenReferences(
+  references: Record<string, unknown>[] = [],
+  referenceKey: string,
+) {
+  return references.map((reference) => {
+    const populated = reference[referenceKey];
+
+    if (populated && typeof populated === "object") {
+      return {
+        ...(populated as Record<string, unknown>),
+        slug: reference.slug,
+      };
+    }
+
+    return reference;
+  });
+}
+
 export async function PUT(request: NextRequest, { params }: RouteContext) {
   try {
     const { response } = await authorizeAdmin();
@@ -39,6 +57,8 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
     await connectDB();
 
     const body = await request.json();
+
+    console.log("Areas received in PUT:", body.areas);
 
     if (!body || typeof body !== "object" || Array.isArray(body)) {
       return NextResponse.json(
@@ -102,9 +122,16 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
 
     await revalidatePublicpage();
 
+    const formattedInstitute = {
+      ...institute,
+      areas: flattenReferences(institute.areas, "areaId"),
+      brands: flattenReferences(institute.brands, "brandId"),
+      campuses: flattenReferences(institute.campuses, "campusId"),
+    };
+
     return NextResponse.json({
       success: true,
-      institute,
+      institute: formattedInstitute,
     });
   } catch (error) {
     if ((error as { code?: number })?.code === 11000) {
