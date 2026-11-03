@@ -330,12 +330,12 @@ export default function ExploreResourceManager({
     setNotice("");
 
     if (settings.hasImage && (!form.imageUrl.trim() || !form.publicId.trim())) {
-      setError("Enter both the image URL and Cloudinary public ID.");
+      toast.error("Please Upload Image");
       return;
     }
 
     if (settings.hasInstitute && !form.institute) {
-      setError("Please select an institute.");
+      toast.error("Please select an institute.");
       return;
     }
 
