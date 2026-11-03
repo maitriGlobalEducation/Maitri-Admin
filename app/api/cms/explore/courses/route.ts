@@ -20,6 +20,7 @@ import {
   validateCourseReferences,
 } from "@/lib/explore-course-validation";
 import { revalidatePublicpage } from "@/services/revalidation.service";
+import { validateScholarshipReferences } from "@/lib/validateScholarshipReferences";
 
 export async function GET(request: NextRequest) {
   const { response } = await authorizeAdmin();
@@ -107,6 +108,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const scholarshipReferences = await validateScholarshipReferences(
+      payload.data.scholarships ?? [],
+    );
+
+    if (scholarshipReferences.error || !scholarshipReferences.data) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: scholarshipReferences.error,
+        },
+        { status: 400 },
+      );
+    }
+
     const references = await validateCourseReferences(payload.data);
 
     if (references.error || !references.data) {
@@ -119,6 +134,7 @@ export async function POST(request: NextRequest) {
     const course = await ExploreCourse.create({
       ...payload.data,
       ...references.data,
+      scholarships: scholarshipReferences.data,
     });
 
     const populatedCourse = await ExploreCourse.findById(course._id)

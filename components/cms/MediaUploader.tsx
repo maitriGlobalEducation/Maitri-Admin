@@ -26,6 +26,7 @@ type Props = {
   kind?: "image" | "video";
   aspect?: string;
   description?: string;
+  required?: boolean;
 };
 
 export default function MediaUploader({
@@ -36,6 +37,7 @@ export default function MediaUploader({
   kind = "image",
   aspect = "aspect-video",
   description,
+  required,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const objectUrlRef = useRef<string | null>(null);
@@ -128,13 +130,12 @@ export default function MediaUploader({
     <div className="w-full">
       {/* Label */}
       <div className="mb-2 flex items-center gap-2">
-        <label className="text-sm font-semibold text-zinc-800">{label}</label>
-
-        {/* {hasMedia && !isUploading && (
-          <span className="rounded-lg bg-emerald-100 border border-emerald-600 px-2.5 py-1 text-[11px] font-medium text-emerald-700">
-            Uploaded
-          </span>
-        )} */}
+        <label className="text-sm font-semibold text-zinc-800">
+          {label}{" "}
+          {required && (
+            <span className="text-red-500 font-medium italic">(required*)</span>
+          )}
+        </label>
       </div>
 
       {/* Preview */}

@@ -49,6 +49,8 @@ export type ExploreCourseInput = {
 
   durationFeatures: string;
   campusOfferings: CourseCampusOfferingInput[];
+  fees: string;
+  scholarships: string[];
 
   description: Record<string, unknown>;
 

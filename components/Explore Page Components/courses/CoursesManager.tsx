@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Search, X, Plus, Trash2, Pencil, RefreshCw } from "lucide-react";
+import {
+  Search,
+  X,
+  Plus,
+  Trash2,
+  Pencil,
+  RefreshCw,
+  ChevronDown,
+} from "lucide-react";
 import { toast } from "react-toastify";
 
 import SearchableMultiSelect, {
@@ -44,6 +52,19 @@ type InstituteOption = SelectOption & {
   campuses?: (string | SelectOption)[];
 };
 
+type ScholarshipRecord = {
+  _id: string;
+  title: string;
+  slug: string;
+  status: "draft" | "published";
+};
+
+type ScholarshipOption = {
+  _id: string;
+  name: string;
+  slug?: string;
+};
+
 type CourseRecord = Omit<
   ExploreCourse,
   "courseCategory" | "area" | "institute" | "campusOfferings"
@@ -51,6 +72,8 @@ type CourseRecord = Omit<
   courseCategory: string | SelectOption;
   area: string | SelectOption;
   institute: string | SelectOption;
+  fees?: number;
+  scholarships?: Array<string | ScholarshipRecord>;
   campusOfferings: {
     _id?: string;
     campus: string | SelectOption;
@@ -77,6 +100,8 @@ const emptyForm: CourseForm = {
     value: 1,
     unit: "years",
   },
+  fees: "",
+  scholarships: [],
   durationFeatures: "",
   campusOfferings: [{ ...emptyOffering }],
   description: {
@@ -105,20 +130,15 @@ function getReferenceName(value: string | SelectOption | undefined): string {
   return typeof value === "string" ? value : value.name;
 }
 
-function getReferenceIds(records: (string | SelectOption)[] = []): string[] {
-  return records.map((record) =>
-    typeof record === "string" ? record : record._id,
-  );
-}
-
 function getErrorMessage(result: any, fallback: string) {
   return result?.message || fallback;
 }
 
 export default function CoursesManager() {
   const [courses, setCourses] = useState<CourseRecord[]>([]);
-  console.log({ courses });
   const [form, setForm] = useState<CourseForm>(emptyForm);
+  const [scholarships, setScholarships] = useState<ScholarshipOption[]>([]);
+  const [feeCurrency, setFeeCurrency] = useState("USD");
 
   const [categories, setCategories] = useState<ReferenceOption[]>([]);
   const [areas, setAreas] = useState<ReferenceOption[]>([]);
@@ -145,6 +165,8 @@ export default function CoursesManager() {
 
   const [totalCourses, setTotalCourses] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+
+  const [validationError, setValidationError] = useState("");
 
   const pageCache = useRef(new Map<string, CoursePage>());
   const requestControllers = useRef(new Map<string, AbortController>());
@@ -266,6 +288,7 @@ export default function CoursesManager() {
         "/api/cms/explore/areas",
         "/api/cms/explore/institutes",
         "/api/cms/explore/campuses",
+        "/api/cms/scholarships",
       ];
 
       const responses = await Promise.all(
@@ -287,13 +310,28 @@ export default function CoursesManager() {
         );
       }
 
-      const [categoryResult, areaResult, instituteResult, campusResult] =
-        results;
+      const [
+        categoryResult,
+        areaResult,
+        instituteResult,
+        campusResult,
+        scholarshipResult,
+      ] = results;
 
       setCategories(categoryResult.body.courseCategories ?? []);
       setAreas(areaResult.body.areas ?? []);
       setInstitutes(instituteResult.body.institutes ?? []);
       setCampuses(campusResult.body.campuses ?? []);
+      const scholarshipData: ScholarshipRecord[] =
+        scholarshipResult.body.data ?? [];
+
+      setScholarships(
+        scholarshipData.map((scholarship) => ({
+          _id: scholarship._id,
+          name: scholarship.title,
+          slug: scholarship.slug,
+        })),
+      );
     } catch (error) {
       setError(
         error instanceof Error
@@ -357,9 +395,29 @@ export default function CoursesManager() {
     }));
   }
 
+  function parseFees(fees: string) {
+    const match = fees.match(/^([A-Z]{3})\s+(\d+)$/);
+
+    if (!match) {
+      return {
+        currency: "USD",
+        amount: fees,
+      };
+    }
+
+    return {
+      currency: match[1],
+      amount: match[2],
+    };
+  }
+
   function startEdit(course: CourseRecord) {
     setEditingId(course._id);
     setManualSlug(true);
+
+    const parsedFees = parseFees(course.fees ?? "");
+
+    setFeeCurrency(parsedFees.currency);
 
     setForm({
       name: course.name,
@@ -367,17 +425,27 @@ export default function CoursesManager() {
       courseCategory: getReferenceId(course.courseCategory),
       area: getReferenceId(course.area),
       institute: getReferenceId(course.institute),
+
       duration: course.duration,
       durationFeatures: course.durationFeatures ?? "",
+
+      fees: parsedFees.amount,
+      scholarships:
+        course.scholarships?.map((scholarship) =>
+          getReferenceId(scholarship),
+        ) ?? [],
+
       campusOfferings: course.campusOfferings.map((offering) => ({
         campus: getReferenceId(offering.campus),
         intakes: offering.intakes ?? [],
         language: offering.language,
       })),
+
       description: course.description ?? {
         type: "doc",
         content: [{ type: "paragraph" }],
       },
+
       status: course.status,
       sortOrder: course.sortOrder ?? 0,
     });
@@ -386,22 +454,63 @@ export default function CoursesManager() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  const hasContent = (content: unknown): boolean => {
+    if (!content) return false;
+
+    if (typeof content === "string") {
+      return content.trim().length > 0;
+    }
+
+    if (typeof content === "object") {
+      const doc = content as {
+        content?: Array<{
+          text?: string;
+          content?: unknown[];
+        }>;
+      };
+
+      return Boolean(
+        doc.content?.some(
+          (node) =>
+            node.text?.trim() || (node.content && node.content.length > 0),
+        ),
+      );
+    }
+
+    return false;
+  };
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
 
-    if (!form.institute) {
-      toast.error("Please select an institute.");
-      return;
-    }
-
-    if (!form.area) {
-      toast.error("Please select an area.");
+    if (!form.name.trim()) {
+      setValidationError("Course name is required.");
       return;
     }
 
     if (!form.courseCategory) {
-      toast.error("Please select a course category.");
+      setValidationError("Please select a course category.");
+      return;
+    }
+
+    if (!form.area) {
+      setValidationError("Please select an area.");
+      return;
+    }
+
+    if (!form.institute) {
+      setValidationError("Please select an institute.");
+      return;
+    }
+
+    if (!form.fees) {
+      setValidationError("Please enter the course fee amount.");
+      return;
+    }
+
+    if (!form.description || !hasContent(form.description)) {
+      setValidationError("Course description is required.");
       return;
     }
 
@@ -452,6 +561,7 @@ export default function CoursesManager() {
 
       const payload = {
         ...form,
+        fees: `${feeCurrency} ${form.fees}`,
         name: form.name.trim(),
         slug: form.slug.trim(),
 
@@ -631,7 +741,10 @@ export default function CoursesManager() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className={labelClass}>Course name *</label>
+              <label className={labelClass}>
+                Course name{" "}
+                <span className="text-red-500 italic">(required*)</span>
+              </label>
 
               <input
                 required
@@ -651,7 +764,7 @@ export default function CoursesManager() {
             </div>
 
             <div>
-              <label className={labelClass}>URL slug *</label>
+              <label className={labelClass}>URL slug</label>
 
               <input
                 required
@@ -676,6 +789,7 @@ export default function CoursesManager() {
                 }
                 placeholder="Search course categories..."
                 multiple={false}
+                required
               />
             </div>
 
@@ -687,6 +801,7 @@ export default function CoursesManager() {
                 onChange={(value) => handleInstituteChange(value[0] ?? "")}
                 placeholder="Search institutes..."
                 multiple={false}
+                required
               />
             </div>
 
@@ -698,10 +813,71 @@ export default function CoursesManager() {
                 onChange={(value) => updateField("area", value[0] ?? "")}
                 placeholder="Search all areas..."
                 multiple={false}
+                required
               />
             </div>
+
+            <SearchableMultiSelect
+              label="Scholarships"
+              options={scholarships}
+              value={form.scholarships}
+              onChange={(value) => updateField("scholarships", value)}
+              placeholder="Search scholarships..."
+              multiple={false}
+            />
           </div>
         </section>
+
+        {/* Fees */}
+        <div>
+          <label className={labelClass}>
+            Course fees <span className="text-red-500 italic">(required*)</span>
+          </label>
+
+          <div className="flex h-12 w-full items-center overflow-hidden rounded-xl border border-zinc-200 bg-white transition-all focus-within:border-amber-500 focus-within:ring-4 focus-within:ring-amber-500/10">
+            {/* Currency dropdown */}
+            <div className="relative flex h-full shrink-0 items-center bg-zinc-50">
+              <select
+                value={feeCurrency}
+                onChange={(event) => setFeeCurrency(event.target.value)}
+                className="h-full cursor-pointer appearance-none bg-transparent py-2 pl-3 pr-7 text-sm font-medium text-zinc-700 outline-none"
+              >
+                <option value="USD">USD $</option>
+                <option value="INR">INR ₹</option>
+                <option value="EUR">EUR €</option>
+                <option value="GBP">GBP £</option>
+                <option value="CAD">CAD $</option>
+                <option value="AUD">AUD $</option>
+              </select>
+
+              <ChevronDown
+                size={14}
+                className="pointer-events-none absolute right-2 text-zinc-400"
+              />
+            </div>
+
+            {/* Divider */}
+            <div className="h-6 w-px shrink-0 bg-zinc-200" />
+
+            {/* Amount input */}
+            <input
+              type="text"
+              inputMode="numeric"
+              required
+              pattern="[0-9]+"
+              className="h-full min-w-0 flex-1 border-0 bg-transparent px-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-400"
+              value={form.fees}
+              onChange={(event) => {
+                const value = event.target.value;
+
+                if (/^\d*$/.test(value)) {
+                  updateField("fees", value);
+                }
+              }}
+              placeholder="Enter course fees"
+            />
+          </div>
+        </div>
 
         {/* Duration */}
         <section className="space-y-4">
@@ -711,21 +887,29 @@ export default function CoursesManager() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className={labelClass}>Duration *</label>
+              <label className={labelClass}>
+                Duration{" "}
+                <span className="text-red-500 italic">(required*)</span>
+              </label>
 
               <div className="flex gap-2">
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   required
-                  min={1}
+                  pattern="[0-9]+"
                   className={inputClass}
                   value={form.duration.value}
-                  onChange={(event) =>
-                    updateField("duration", {
-                      ...form.duration,
-                      value: Number(event.target.value),
-                    })
-                  }
+                  onChange={(event) => {
+                    const value = event.target.value;
+
+                    if (/^\d*$/.test(value)) {
+                      updateField("duration", {
+                        ...form.duration,
+                        value: value === "" ? 0 : Number(value),
+                      });
+                    }
+                  }}
                 />
 
                 <select
@@ -864,7 +1048,8 @@ export default function CoursesManager() {
         {/* Description */}
         <section className="space-y-4">
           <h3 className="border-b border-zinc-100 pb-2 font-medium text-zinc-800">
-            Course description
+            Course description{" "}
+            <span className="text-red-500 italic">(required*)</span>
           </h3>
 
           <BlogEditor
@@ -931,6 +1116,45 @@ export default function CoursesManager() {
           </button>
         </div>
       </form>
+
+      {validationError && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-red-50">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                className="size-6 text-red-500"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
+                />
+              </svg>
+            </div>
+
+            <h3 className="text-lg font-semibold text-zinc-900">
+              Required field missing
+            </h3>
+
+            <p className="mt-2 text-sm leading-6 text-zinc-600">
+              {validationError}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setValidationError("")}
+              className="mt-6 w-full cursor-pointer rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-700"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Courses list */}
       <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">

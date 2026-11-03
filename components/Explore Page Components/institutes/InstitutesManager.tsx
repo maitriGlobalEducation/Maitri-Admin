@@ -120,6 +120,8 @@ export default function InstitutesManager() {
 
   const [pageLoading, setPageLoading] = useState(false);
 
+  const [validationError, setValidationError] = useState("");
+
   const pageCache = useRef(new Map<string, InstitutePage>());
   const requestControllers = useRef(new Map<string, AbortController>());
 
@@ -314,12 +316,53 @@ export default function InstitutesManager() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  const hasContent = (content: unknown): boolean => {
+    if (!content) return false;
+
+    if (typeof content === "string") {
+      return content.trim().length > 0;
+    }
+
+    if (typeof content === "object") {
+      const doc = content as {
+        content?: Array<{
+          text?: string;
+          content?: unknown[];
+        }>;
+      };
+
+      return Boolean(
+        doc.content?.some(
+          (node) =>
+            node.text?.trim() || (node.content && node.content.length > 0),
+        ),
+      );
+    }
+
+    return false;
+  };
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
 
-    if (!form.logo?.url || !form.logo.publicId) {
-      toast.error("Please upload the institute logo.");
+    if (!form.name.trim()) {
+      setValidationError("Institute name is required.");
+      return;
+    }
+
+    if (!form.slug.trim()) {
+      setValidationError("URL slug is required.");
+      return;
+    }
+
+    if (!form.logo?.url) {
+      setValidationError("Institute logo is required.");
+      return;
+    }
+
+    if (!form.content || !hasContent(form.content)) {
+      setValidationError("Institute content is required.");
       return;
     }
 
@@ -506,7 +549,10 @@ export default function InstitutesManager() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className={labelClass}>Institute name *</label>
+              <label className={labelClass}>
+                Institute name{" "}
+                <span className="text-red-500 italic">(required*)</span>
+              </label>
               <input
                 className={inputClass}
                 required
@@ -524,7 +570,7 @@ export default function InstitutesManager() {
             </div>
 
             <div>
-              <label className={labelClass}>URL slug *</label>
+              <label className={labelClass}>URL slug</label>
               <input
                 className={inputClass}
                 required
@@ -565,6 +611,7 @@ export default function InstitutesManager() {
               value={form.logo}
               onChange={(media) => updateField("logo", media)}
               aspect="aspect-square"
+              required
             />
 
             <MediaUploader
@@ -578,12 +625,15 @@ export default function InstitutesManager() {
         </section>
 
         <section className="space-y-4">
-          <h3 className="border-b border-zinc-100 pb-2 font-medium text-zinc-800">
+          <h3 className="border-b border-zinc-100 py-6 font-medium text-zinc-800">
             Institute page content
           </h3>
 
           <div>
-            <label className={labelClass}>Institute content</label>
+            <label className={labelClass}>
+              Institute content{" "}
+              <span className="text-red-500 italic">(required*)</span>
+            </label>
 
             <BlogEditor
               content={form.content}
@@ -697,8 +747,9 @@ export default function InstitutesManager() {
               <option value="published">Published</option>
             </select>
           </div>
+        </section>
 
-          <div>
+        {/* <div>
             <label className={labelClass}>Display order</label>
             <input
               className={inputClass}
@@ -710,9 +761,9 @@ export default function InstitutesManager() {
                 updateField("sortOrder", Number(event.target.value))
               }
             />
-          </div>
+          </div> */}
 
-          <label className="flex cursor-pointer items-center gap-2 self-end rounded-lg border border-zinc-200 p-3 text-sm">
+        {/* <label className="flex cursor-pointer items-center gap-2 self-end rounded-lg border border-zinc-200 p-3 text-sm">
             <input
               type="checkbox"
               checked={form.featured}
@@ -722,8 +773,8 @@ export default function InstitutesManager() {
               className="size-4 accent-orange-600"
             />
             Feature this institute
-          </label>
-        </section>
+          </label> */}
+        {/* </section> */}
 
         <div className="flex flex-wrap gap-3">
           <button
@@ -1034,6 +1085,46 @@ export default function InstitutesManager() {
           </>
         )}
       </section>
+
+      {validationError && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm animate-in zoom-in-95 rounded-2xl bg-white p-6 shadow-2xl duration-200">
+            <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-red-50">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                className="size-6 text-red-500"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
+                />
+              </svg>
+            </div>
+
+            <h3 className="text-lg font-semibold text-zinc-900">
+              Required field missing
+            </h3>
+
+            <p className="mt-2 text-sm leading-6 text-zinc-600">
+              {validationError}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setValidationError("")}
+              className="mt-6 w-full cursor-pointer rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-700"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
+
       <ConfirmDeleteModal
         open={!!instituteToDelete}
         title="Delete institute?"

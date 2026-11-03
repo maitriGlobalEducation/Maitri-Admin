@@ -10,6 +10,13 @@ export interface SelectOption {
   [key: string]: unknown;
 }
 
+type ScholarshipRecord = {
+  _id: string;
+  title: string;
+  slug: string;
+  status: "draft" | "published";
+};
+
 type Props = {
   label: string;
   placeholder?: string;
@@ -17,6 +24,7 @@ type Props = {
   value: string[];
   onChange: (value: string[]) => void;
   multiple?: boolean;
+  required?: boolean;
 };
 
 export default function SearchableMultiSelect({
@@ -26,6 +34,7 @@ export default function SearchableMultiSelect({
   value,
   onChange,
   multiple = true,
+  required,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -105,7 +114,10 @@ export default function SearchableMultiSelect({
   return (
     <div ref={containerRef} className="relative w-full">
       <div className="mb-2 flex items-center justify-between">
-        <label className="text-sm font-semibold text-zinc-800">{label}</label>
+        <label className="text-sm font-medium text-zinc-700">
+          {label}{" "}
+          {required && <span className="text-red-500 italic">(required*)</span>}
+        </label>
 
         {value.length > 0 && (
           <button

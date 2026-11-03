@@ -30,21 +30,29 @@ export function getCoursePayload(body: Record<string, unknown>) {
       ? (body.institute as Record<string, unknown>)
       : null;
 
+  const scholarships = body.scholarships ?? [];
+
+  if (!Array.isArray(scholarships)) {
+    return { error: "Scholarships must be an array." };
+  }
+
+  if (scholarships.some((id) => !mongoose.isValidObjectId(id))) {
+    return { error: "Please select valid scholarships." };
+  }
+
+  const fees = typeof body.fees === "string" ? body.fees.trim() : "";
+
+  if (!/^[A-Z]{3}\s+\d+$/.test(fees)) {
+    return { error: "Please provide valid course fees." };
+  }
+
   const courseCategory = courseCategoryRef?.categoryId ?? body.courseCategory;
   const area = areaRef?.areaId ?? body.area;
   const institute = instituteRef?.instituteId ?? body.institute;
+
   const duration = body.duration as
     | { value?: number; unit?: string }
     | undefined;
-
-  console.log("Course references:", {
-    courseCategory,
-    area,
-    institute,
-    categoryValid: mongoose.isValidObjectId(courseCategory),
-    areaValid: mongoose.isValidObjectId(area),
-    instituteValid: mongoose.isValidObjectId(institute),
-  });
 
   if (!name || !slug) {
     return { error: "Course name and slug are required." };
@@ -95,6 +103,7 @@ export function getCoursePayload(body: Record<string, unknown>) {
     }
 
     const offering = item as Record<string, unknown>;
+
     const campusRef =
       typeof offering.campus === "object" && offering.campus !== null
         ? (offering.campus as Record<string, unknown>)
@@ -132,6 +141,9 @@ export function getCoursePayload(body: Record<string, unknown>) {
     data: {
       name,
       slug,
+      fees,
+      scholarships: scholarships.map(String),
+
       courseCategory: {
         categoryId: String(courseCategory),
         slug: String(courseCategoryRef?.slug ?? ""),
@@ -146,19 +158,24 @@ export function getCoursePayload(body: Record<string, unknown>) {
         instituteId: String(institute),
         slug: String(instituteRef?.slug ?? ""),
       },
+
       duration: {
         value: Number(duration.value),
         unit: duration.unit,
       },
+
       durationFeatures:
         typeof body.durationFeatures === "string"
           ? body.durationFeatures.trim()
           : "",
+
       campusOfferings,
+
       description: body.description ?? {
         type: "doc",
         content: [{ type: "paragraph" }],
       },
+
       status,
       sortOrder,
     },

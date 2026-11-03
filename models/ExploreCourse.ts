@@ -1,5 +1,20 @@
 import mongoose, { Schema } from "mongoose";
 
+const CourseScholarshipSchema = new mongoose.Schema(
+  {
+    scholarshipId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Scholarship",
+      required: true,
+    },
+    slug: {
+      type: String,
+      required: true,
+    },
+  },
+  { _id: false },
+);
+
 const CourseCategoryReferenceSchema = new Schema(
   {
     categoryId: {
@@ -121,6 +136,17 @@ const ExploreCourseSchema = new Schema(
     institute: {
       type: InstituteReferenceSchema,
       required: true,
+    },
+
+    fees: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    scholarships: {
+      type: [CourseScholarshipSchema],
+      default: [],
     },
 
     duration: {

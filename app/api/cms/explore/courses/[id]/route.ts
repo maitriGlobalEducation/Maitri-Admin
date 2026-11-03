@@ -12,6 +12,7 @@ import {
   getCoursePayload,
   validateCourseReferences,
 } from "@/lib/explore-course-validation";
+import { validateScholarshipReferences } from "@/lib/validateScholarshipReferences";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -97,6 +98,20 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       );
     }
 
+    const scholarshipReferences = await validateScholarshipReferences(
+      payload.data.scholarships ?? [],
+    );
+
+    if (scholarshipReferences.error || !scholarshipReferences.data) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: scholarshipReferences.error,
+        },
+        { status: 400 },
+      );
+    }
+
     const references = await validateCourseReferences(payload.data);
 
     if (references.error || !references.data) {
@@ -125,6 +140,7 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
           $set: {
             ...payload.data,
             ...references.data,
+            scholarships: scholarshipReferences.data,
           },
         },
         {
