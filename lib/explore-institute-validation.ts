@@ -148,42 +148,6 @@ function extractReferenceIds(
 export async function validateInstituteReferences(
   body: Record<string, unknown>,
 ) {
-  const extractIds = (references: unknown): string[] => {
-    if (!Array.isArray(references)) return [];
-
-    return references
-      .map((reference) => {
-        if (typeof reference === "string") return reference;
-
-        if (
-          reference &&
-          typeof reference === "object" &&
-          "areaId" in reference
-        ) {
-          return String(reference.areaId);
-        }
-
-        if (
-          reference &&
-          typeof reference === "object" &&
-          "brandId" in reference
-        ) {
-          return String(reference.brandId);
-        }
-
-        if (
-          reference &&
-          typeof reference === "object" &&
-          "campusId" in reference
-        ) {
-          return String(reference.campusId);
-        }
-
-        return "";
-      })
-      .filter(Boolean);
-  };
-
   const [areas, brands, campuses] = await Promise.all([
     validateIds(
       extractReferenceIds(body.areas ?? [], "areaId"),

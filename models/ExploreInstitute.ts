@@ -63,11 +63,9 @@ const ExploreInstituteSchema = new Schema(
         areaId: {
           type: Schema.Types.ObjectId,
           ref: "ExploreArea",
-          required: true,
         },
         slug: {
           type: String,
-          required: true,
           trim: true,
           lowercase: true,
         },
@@ -79,11 +77,9 @@ const ExploreInstituteSchema = new Schema(
         brandId: {
           type: Schema.Types.ObjectId,
           ref: "ExploreBrand",
-          required: true,
         },
         slug: {
           type: String,
-          required: true,
           trim: true,
           lowercase: true,
         },
@@ -95,11 +91,9 @@ const ExploreInstituteSchema = new Schema(
         campusId: {
           type: Schema.Types.ObjectId,
           ref: "ExploreCampus",
-          required: true,
         },
         slug: {
           type: String,
-          required: true,
           trim: true,
           lowercase: true,
         },
