@@ -7,6 +7,7 @@ import type { Scholarship } from "@/types/scholarship";
 
 import ScholarshipForm from "./ScholarshipForm";
 import { toast } from "react-toastify";
+import { statusDotStyles, statusStyles } from "@/lib/styles/publishStatusStyle";
 
 export default function ScholarshipsManager() {
   const [scholarships, setScholarships] = useState<Scholarship[]>([]);
@@ -242,12 +243,17 @@ export default function ScholarshipsManager() {
 
                       <td className="px-5 py-4">
                         <span
-                          className={`inline-flex rounded-md px-2 py-1 text-xs font-medium ${
-                            scholarship.status === "published"
-                              ? "bg-emerald-100 text-emerald-700 border border-emerald-500"
-                              : "bg-amber-100 text-amber-600 border border-amber-500"
-                          } capitalize`}
+                          className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium capitalize ${
+                            statusStyles[scholarship.status] ??
+                            "bg-gray-100 text-gray-600 border border-gray-200"
+                          }`}
                         >
+                          <span
+                            className={`size-2 rounded-full ${
+                              statusDotStyles[scholarship.status] ??
+                              "bg-gray-400"
+                            }`}
+                          />
                           {scholarship.status}
                         </span>
                       </td>

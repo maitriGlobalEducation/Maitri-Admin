@@ -6,6 +6,7 @@ import { toast } from "react-toastify";
 
 import BlogForm from "./BlogForm";
 import { Blog } from "@/types/blog";
+import { statusDotStyles, statusStyles } from "@/lib/styles/publishStatusStyle";
 
 export default function BlogsManager() {
   const [blogs, setBlogs] = useState<Blog[]>([]);
@@ -175,11 +176,11 @@ export default function BlogsManager() {
                   </th>
 
                   <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    Status
+                    Date
                   </th>
 
                   <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    Date
+                    Status
                   </th>
 
                   <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">
@@ -215,26 +216,34 @@ export default function BlogsManager() {
                       </div>
                     </td>
 
+                    {/* Category */}
                     <td className="px-5 py-4 text-sm text-zinc-600">
                       {blog.category}
                     </td>
 
-                    <td className="px-5 py-4">
-                      <span
-                        className={`inline-flex rounded-md px-2.5 py-1 text-xs font-medium ${
-                          blog.status.toLowerCase() === "published"
-                            ? "bg-green-100 text-green-700 border border-green-700"
-                            : "bg-amber-100 text-amber-600 border border-amber-600"
-                        } capitalize`}
-                      >
-                        {blog.status}
-                      </span>
-                    </td>
-
+                    {/* Date */}
                     <td className="px-5 py-4 text-sm text-zinc-500">
                       {new Date(blog.createdAt).toLocaleDateString()}
                     </td>
 
+                    {/* Status */}
+                    <td className="px-5 py-4">
+                      <span
+                        className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium capitalize ${
+                          statusStyles[blog.status] ??
+                          "bg-gray-100 text-gray-600 border border-gray-200"
+                        }`}
+                      >
+                        <span
+                          className={`size-2 rounded-full ${
+                            statusDotStyles[blog.status] ?? "bg-gray-400"
+                          }`}
+                        />
+                        {blog.status}
+                      </span>
+                    </td>
+
+                    {/* Action buttons */}
                     <td className="px-5 py-4">
                       <div className="flex justify-end gap-2">
                         <button

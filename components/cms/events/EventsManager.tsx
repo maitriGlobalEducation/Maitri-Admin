@@ -7,6 +7,7 @@ import { toast } from "react-toastify";
 import type { Event } from "@/types/event";
 import { getEvents } from "@/services/event.service";
 import EventForm from "./EventForm";
+import { statusDotStyles, statusStyles } from "@/lib/styles/publishStatusStyle";
 
 export default function EventsManager() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -236,13 +237,17 @@ export default function EventsManager() {
                     {/* Status */}
                     <td className="px-6 py-4">
                       <span
-                        className={`inline-flex rounded-md px-2.5 py-1 text-xs font-medium ${
-                          event.status.toLowerCase() === "published"
-                            ? "bg-emerald-100 text-emerald-700 border border-emerald-600"
-                            : "bg-amber-100 text-amber-700 border border-amber-600"
-                        } capitalize`}
+                        className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium capitalize ${
+                          statusStyles[event.status] ??
+                          "bg-gray-100 text-gray-600 border border-gray-200"
+                        }`}
                       >
-                        {event.status === "published" ? "Published" : "Draft"}
+                        <span
+                          className={`size-2 rounded-full ${
+                            statusDotStyles[event.status] ?? "bg-gray-400"
+                          }`}
+                        />
+                        {event.status}
                       </span>
                     </td>
 

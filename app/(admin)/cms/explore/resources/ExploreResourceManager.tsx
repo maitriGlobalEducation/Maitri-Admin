@@ -3,7 +3,7 @@
 import MediaUploader from "@/components/cms/MediaUploader";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 import { createSlug } from "@/lib/slug";
-import { Search, X } from "lucide-react";
+import { Pencil, RefreshCcw, Search, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
@@ -485,16 +485,6 @@ export default function ExploreResourceManager({
           <h2 className="font-semibold text-zinc-900">
             {editingId ? "Edit record" : `Add ${resourceLabel[kind]}`}
           </h2>
-
-          {editingId && (
-            <button
-              type="button"
-              onClick={resetForm}
-              className="cursor-pointer text-sm text-zinc-500 hover:text-zinc-900"
-            >
-              Cancel editing
-            </button>
-          )}
         </div>
 
         <div>
@@ -622,17 +612,29 @@ export default function ExploreResourceManager({
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={saving || (settings.hasInstitute && !institutes.length)}
-          className="cursor-pointer rounded-lg bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {saving
-            ? "Saving..."
-            : editingId
-              ? "Update"
-              : `Add ${resourceLabel[kind]}`}
-        </button>
+        <div className="flex items-center gap-3 pt-2">
+          <button
+            type="submit"
+            disabled={saving || (settings.hasInstitute && !institutes.length)}
+            className="inline-flex cursor-pointer items-center justify-center rounded-lg bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-orange-700 hover:shadow-md active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+          >
+            {saving
+              ? "Saving..."
+              : editingId
+                ? "Update"
+                : `Add ${resourceLabel[kind]}`}
+          </button>
+
+          {editingId && (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-zinc-200 bg-white px-5 py-2.5 text-sm font-medium text-zinc-600 transition-all duration-200 hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-900 active:scale-[0.98]"
+            >
+              Cancel editing
+            </button>
+          )}
+        </div>
       </form>
 
       <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
@@ -677,13 +679,17 @@ export default function ExploreResourceManager({
 
             <button
               type="button"
+              disabled={pageLoading}
               onClick={() => {
                 pageCache.current.clear();
                 void loadData(currentPage, debouncedSearch, true);
               }}
-              className="h-10 cursor-pointer rounded-lg px-3 text-sm font-medium text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+              className="h-10 cursor-pointer rounded-lg px-3 text-sm font-medium text-orange-600 transition hover:bg-orange-50 hover:text-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Refresh
+              <RefreshCcw
+                size={18}
+                className={pageLoading ? "animate-spin" : ""}
+              />
             </button>
           </div>
         </div>
@@ -741,20 +747,22 @@ export default function ExploreResourceManager({
                     <button
                       type="button"
                       onClick={() => startEdit(item)}
-                      className="cursor-pointer rounded-lg border border-zinc-300 px-3 py-2 text-sm hover:bg-zinc-50"
+                      className="cursor-pointer rounded-md p-2 text-sky-600 hover:bg-sky-100"
+                      title="Edit course"
                     >
-                      Edit
+                      <Pencil className="size-4" />
                     </button>
 
                     <button
                       type="button"
                       onClick={() => {
-                        setItemToDelete(item);
                         setDeleteError("");
+                        setItemToDelete(item);
                       }}
-                      className="cursor-pointer rounded-lg border border-red-200 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                      className="cursor-pointer rounded-md p-2 text-red-500 hover:bg-red-100"
+                      title="Delete course"
                     >
-                      Delete
+                      <Trash2 className="size-4" />
                     </button>
                   </div>
                 </div>

@@ -34,6 +34,8 @@ import {
   getCoursesPage,
   type CoursePage,
 } from "@/services/explore-courses.service";
+import { statusDotStyles, statusStyles } from "@/lib/styles/publishStatusStyle";
+import { formatDate } from "@/helpers/date";
 
 const inputClass =
   "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-100";
@@ -1193,15 +1195,17 @@ export default function CoursesManager() {
 
             <button
               type="button"
+              disabled={pageLoading}
               onClick={() => {
                 pageCache.current.clear();
                 void loadPage(currentPage, debouncedSearch, true);
                 void loadReferenceData();
               }}
-              className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm font-medium text-orange-600 hover:bg-orange-50"
+              className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm font-medium text-orange-600 transition-colors hover:bg-orange-50 hover:text-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <RefreshCw className="size-4" />
-              Refresh
+              <RefreshCw
+                className={`size-4 ${pageLoading ? "animate-spin" : ""}`}
+              />
             </button>
           </div>
         </div>
@@ -1266,7 +1270,7 @@ export default function CoursesManager() {
                         </p>
 
                         <p className="mt-1 text-xs text-zinc-500">
-                          {course.slug}
+                          {formatDate(course.createdAt)}
                         </p>
                       </td>
 
@@ -1288,12 +1292,16 @@ export default function CoursesManager() {
 
                       <td className="px-4 py-4">
                         <span
-                          className={`inline-flex rounded-md border px-2 py-1 text-xs font-semibold capitalize ${
-                            course.status === "published"
-                              ? "border-green-400 bg-green-50 text-green-500"
-                              : "border-zinc-200 bg-zinc-100 text-zinc-600"
+                          className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium capitalize ${
+                            statusStyles[course.status] ??
+                            "bg-gray-100 text-gray-600 border border-gray-200"
                           }`}
                         >
+                          <span
+                            className={`size-2 rounded-full ${
+                              statusDotStyles[course.status] ?? "bg-gray-400"
+                            }`}
+                          />
                           {course.status}
                         </span>
                       </td>
@@ -1303,7 +1311,7 @@ export default function CoursesManager() {
                           <button
                             type="button"
                             onClick={() => startEdit(course)}
-                            className="cursor-pointer rounded-md p-2 text-orange-600 hover:bg-orange-50"
+                            className="cursor-pointer rounded-md p-2 text-sky-600 hover:bg-sky-100"
                             title="Edit course"
                           >
                             <Pencil className="size-4" />
@@ -1315,7 +1323,7 @@ export default function CoursesManager() {
                               setDeleteError("");
                               setCourseToDelete(course);
                             }}
-                            className="cursor-pointer rounded-md p-2 text-red-500 hover:bg-red-50"
+                            className="cursor-pointer rounded-md p-2 text-red-500 hover:bg-red-100"
                             title="Delete course"
                           >
                             <Trash2 className="size-4" />

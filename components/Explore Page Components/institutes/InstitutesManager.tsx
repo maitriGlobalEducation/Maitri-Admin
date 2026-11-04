@@ -13,12 +13,14 @@ import BlogEditor from "@/components/cms/blogs/BlogEditor";
 import MediaUploader from "@/components/cms/MediaUploader";
 import { toast } from "react-toastify";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
-import { Search, X } from "lucide-react";
+import { Pencil, RefreshCw, Search, Trash2, X } from "lucide-react";
 import {
   ExploreInstitute,
   ExploreInstituteInput,
   ExploreInstituteStatus,
 } from "@/types/explore-institute";
+import { statusDotStyles, statusStyles } from "@/lib/styles/publishStatusStyle";
+import { formatDate } from "@/helpers/date";
 
 type InstituteForm = Omit<ExploreInstituteInput, "campuses"> & {
   areas: string[];
@@ -119,6 +121,7 @@ export default function InstitutesManager() {
   const [totalPages, setTotalPages] = useState(0);
 
   const [pageLoading, setPageLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(false);
 
   const [validationError, setValidationError] = useState("");
 
@@ -226,6 +229,7 @@ export default function InstitutesManager() {
   }, [currentPage, debouncedSearch, loadPage]);
 
   const loadReferenceData = useCallback(async () => {
+    setDataLoading(true);
     try {
       const endpoints = [
         "/api/cms/explore/areas",
@@ -263,6 +267,8 @@ export default function InstitutesManager() {
           ? error.message
           : "Failed to load reference data.",
       );
+    } finally {
+      setDataLoading(false);
     }
   }, []);
 
@@ -844,14 +850,17 @@ export default function InstitutesManager() {
 
             <button
               type="button"
+              disabled={dataLoading}
               onClick={() => {
                 pageCache.current.clear();
                 void loadPage(currentPage, debouncedSearch, true);
                 void loadReferenceData();
               }}
-              className="h-10 cursor-pointer rounded-lg px-3 text-sm font-medium text-orange-600 hover:bg-orange-50 hover:text-orange-700"
+              className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm font-medium text-orange-600 transition-colors hover:bg-orange-50 hover:text-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Refresh
+              <RefreshCw
+                className={`size-4 ${dataLoading ? "animate-spin" : ""}`}
+              />
             </button>
           </div>
         </div>
@@ -877,13 +886,13 @@ export default function InstitutesManager() {
             <div className="overflow-x-auto">
               <div className="min-w-237.5">
                 {/* Column headings */}
-                <div className="grid grid-cols-[70px_minmax(190px,1.5fr)_110px_minmax(150px,1fr)_minmax(160px,1.2fr)_150px] items-center gap-4 border-b border-zinc-200 bg-zinc-50 px-5 py-3">
+                <div className="grid grid-cols-[70px_minmax(190px,1.2fr)_minmax(110px,0.8fr)_minmax(180px,1.5fr)_110px_130px] items-center gap-4 border-b border-zinc-200 bg-zinc-50 px-5 py-3">
                   {[
                     "Logo",
                     "Institute",
-                    "Status",
                     "Areas",
                     "Campuses",
+                    "Status",
                     "Actions",
                   ].map((heading) => (
                     <p
@@ -904,7 +913,7 @@ export default function InstitutesManager() {
                     return (
                       <div
                         key={institute._id}
-                        className="institute-row-enter grid grid-cols-[70px_minmax(190px,1.5fr)_110px_minmax(150px,1fr)_minmax(160px,1.2fr)_150px] items-center gap-4 px-5 py-4 transition-colors hover:bg-zinc-50/70"
+                        className="institute-row-enter grid grid-cols-[70px_minmax(190px,1.2fr)_minmax(110px,0.8fr)_minmax(180px,1.5fr)_110px_130px] items-center gap-4 px-5 py-4 transition-colors hover:bg-zinc-50/70"
                         style={{ animationDelay: `${index * 35}ms` }}
                       >
                         {/* Logo */}
@@ -929,7 +938,7 @@ export default function InstitutesManager() {
                             {institute.name}
                           </p>
                           <p className="mt-1 truncate text-xs text-zinc-500">
-                            {institute.slug}
+                            {formatDate(institute.createdAt)}
                           </p>
 
                           {institute.featured && (
@@ -937,19 +946,6 @@ export default function InstitutesManager() {
                               Featured
                             </span>
                           )}
-                        </div>
-
-                        {/* Status */}
-                        <div>
-                          <span
-                            className={`inline-flex rounded-md border px-2 py-1 text-xs font-medium capitalize ${
-                              institute.status === "published"
-                                ? "border-emerald-500 bg-emerald-100 text-emerald-700"
-                                : "border-amber-500 bg-amber-100 text-amber-700"
-                            }`}
-                          >
-                            {institute.status}
-                          </span>
                         </div>
 
                         {/* Areas */}
@@ -1002,25 +998,45 @@ export default function InstitutesManager() {
                           )}
                         </div>
 
+                        {/* Status */}
+                        <div>
+                          <span
+                            className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium capitalize ${
+                              statusStyles[institute.status] ??
+                              "bg-gray-100 text-gray-600 border border-gray-200"
+                            }`}
+                          >
+                            <span
+                              className={`size-2 rounded-full ${
+                                statusDotStyles[institute.status] ??
+                                "bg-gray-400"
+                              }`}
+                            />
+                            {institute.status}
+                          </span>
+                        </div>
+
                         {/* Actions */}
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
                             onClick={() => startEdit(institute)}
-                            className="cursor-pointer rounded-lg border border-zinc-300 px-3 py-2 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100"
+                            className="cursor-pointer rounded-md p-2 text-sky-600 hover:bg-sky-100"
+                            title="Edit course"
                           >
-                            Edit
+                            <Pencil className="size-4" />
                           </button>
 
                           <button
                             type="button"
                             onClick={() => {
-                              setInstituteToDelete(institute);
                               setDeleteError("");
+                              setInstituteToDelete(institute);
                             }}
-                            className="cursor-pointer rounded-lg border border-red-200 px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50"
+                            className="cursor-pointer rounded-md p-2 text-red-500 hover:bg-red-100"
+                            title="Delete course"
                           >
-                            Delete
+                            <Trash2 className="size-4" />
                           </button>
                         </div>
                       </div>
