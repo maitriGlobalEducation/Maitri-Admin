@@ -2,7 +2,7 @@ import Scholarship from "@/models/Scholarship";
 import mongoose from "mongoose";
 
 export async function validateScholarshipReferences(
-  scholarshipIds: unknown,
+  scholarshipsInput: unknown,
 ): Promise<{
   error?: string;
   data?: {
@@ -10,19 +10,30 @@ export async function validateScholarshipReferences(
     slug: string;
   }[];
 }> {
-  if (!Array.isArray(scholarshipIds)) {
-    return {
-      error: "Invalid scholarships.",
-    };
+  if (!Array.isArray(scholarshipsInput)) {
+    return { error: "Invalid scholarships." };
   }
 
+  // Extract IDs from either strings or scholarship objects.
+  const scholarshipIds = scholarshipsInput.map((item) => {
+    if (typeof item === "string") return item;
+
+    if (item && typeof item === "object") {
+      return (item as Record<string, unknown>).scholarshipId;
+    }
+
+    return null;
+  });
+
   if (scholarshipIds.some((id) => !mongoose.isValidObjectId(id))) {
-    return {
-      error: "Invalid scholarship ID.",
-    };
+    return { error: "Invalid scholarship ID." };
   }
 
   const uniqueIds = [...new Set(scholarshipIds.map(String))];
+
+  if (uniqueIds.length === 0) {
+    return { data: [] };
+  }
 
   const scholarships = await Scholarship.find({
     _id: { $in: uniqueIds },

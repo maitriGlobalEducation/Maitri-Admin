@@ -36,7 +36,21 @@ export function getCoursePayload(body: Record<string, unknown>) {
     return { error: "Scholarships must be an array." };
   }
 
-  if (scholarships.some((id) => !mongoose.isValidObjectId(id))) {
+  if (
+    scholarships.some((scholarship) => {
+      if (!scholarship || typeof scholarship !== "object") {
+        return true;
+      }
+
+      const item = scholarship as Record<string, unknown>;
+
+      return (
+        !mongoose.isValidObjectId(item.scholarshipId) ||
+        typeof item.slug !== "string" ||
+        !item.slug.trim()
+      );
+    })
+  ) {
     return { error: "Please select valid scholarships." };
   }
 
@@ -142,7 +156,14 @@ export function getCoursePayload(body: Record<string, unknown>) {
       name,
       slug,
       fees,
-      scholarships: scholarships.map(String),
+      scholarships: scholarships.map((scholarship) => {
+        const item = scholarship as Record<string, unknown>;
+
+        return {
+          scholarshipId: String(item.scholarshipId),
+          slug: String(item.slug),
+        };
+      }),
 
       courseCategory: {
         categoryId: String(courseCategory),

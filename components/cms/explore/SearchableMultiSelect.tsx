@@ -10,12 +10,12 @@ export interface SelectOption {
   [key: string]: unknown;
 }
 
-type ScholarshipRecord = {
-  _id: string;
-  title: string;
-  slug: string;
-  status: "draft" | "published";
-};
+// type ScholarshipRecord = {
+//   _id: string;
+//   title: string;
+//   slug: string;
+//   status: "draft" | "published";
+// };
 
 type Props = {
   label: string;
@@ -158,9 +158,7 @@ export default function SearchableMultiSelect({
             }`}
           >
             {multiple
-              ? value.length
-                ? `${value.length} selected`
-                : `Select ${label.toLowerCase()}`
+              ? `${value.length} ${label.toLowerCase()} selected`
               : selectedLabel || `Select ${label.toLowerCase()}`}
           </span>
         </span>

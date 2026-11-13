@@ -44,6 +44,11 @@ const labelClass = "mb-1.5 block text-sm font-medium text-zinc-700";
 
 const ITEMS_PER_PAGE = 10;
 
+type CourseScholarshipReference = {
+  scholarshipId: string;
+  slug: string;
+};
+
 type ReferenceOption = SelectOption & {
   city?: string;
   country?: string;
@@ -69,13 +74,13 @@ type ScholarshipOption = {
 
 type CourseRecord = Omit<
   ExploreCourse,
-  "courseCategory" | "area" | "institute" | "campusOfferings"
+  "courseCategory" | "area" | "institute" | "campusOfferings" | "scholarships"
 > & {
   courseCategory: string | SelectOption;
   area: string | SelectOption;
   institute: string | SelectOption;
   fees?: number;
-  scholarships?: Array<string | ScholarshipRecord>;
+  scholarships?: Array<string | CourseScholarshipReference>;
   campusOfferings: {
     _id?: string;
     campus: string | SelectOption;
@@ -139,7 +144,9 @@ function getErrorMessage(result: any, fallback: string) {
 export default function CoursesManager() {
   const [courses, setCourses] = useState<CourseRecord[]>([]);
   const [form, setForm] = useState<CourseForm>(emptyForm);
+  console.log({ form });
   const [scholarships, setScholarships] = useState<ScholarshipOption[]>([]);
+  // console.log({ scholarships });
   const [feeCurrency, setFeeCurrency] = useState("USD");
 
   const [categories, setCategories] = useState<ReferenceOption[]>([]);
@@ -434,7 +441,9 @@ export default function CoursesManager() {
       fees: parsedFees.amount,
       scholarships:
         course.scholarships?.map((scholarship) =>
-          getReferenceId(scholarship),
+          typeof scholarship === "string"
+            ? scholarship
+            : scholarship.scholarshipId,
         ) ?? [],
 
       campusOfferings: course.campusOfferings.map((offering) => ({
@@ -564,6 +573,20 @@ export default function CoursesManager() {
       const payload = {
         ...form,
         fees: `${feeCurrency} ${form.fees}`,
+        scholarships: form.scholarships.map((scholarshipId) => {
+          const scholarship = scholarships.find(
+            (item) => item._id === scholarshipId,
+          );
+
+          if (!scholarship?.slug) {
+            throw new Error("Unable to find the selected scholarship slug.");
+          }
+
+          return {
+            scholarshipId: scholarship._id,
+            slug: scholarship.slug,
+          };
+        }),
         name: form.name.trim(),
         slug: form.slug.trim(),
 
@@ -825,7 +848,7 @@ export default function CoursesManager() {
               value={form.scholarships}
               onChange={(value) => updateField("scholarships", value)}
               placeholder="Search scholarships..."
-              multiple={false}
+              // multiple
             />
           </div>
         </section>
