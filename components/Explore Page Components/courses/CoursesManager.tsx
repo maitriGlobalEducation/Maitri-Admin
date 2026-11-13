@@ -1306,7 +1306,7 @@ export default function CoursesManager() {
                         </span>
                       </td>
 
-                      <td className="px-4 py-4">
+                      <td className="px-2 py-2">
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
