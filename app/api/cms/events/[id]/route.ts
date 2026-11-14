@@ -82,6 +82,46 @@ export async function PATCH(request: Request, { params }: RouteContext) {
 
     const body = await request.json();
 
+    // Handle status-only updates separately
+    if (
+      body &&
+      typeof body === "object" &&
+      !Array.isArray(body) &&
+      Object.keys(body).length === 1 &&
+      ["draft", "published"].includes(body.status)
+    ) {
+      const event = await Event.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            status: body.status,
+          },
+        },
+        {
+          new: true,
+          runValidators: true,
+        },
+      ).lean();
+
+      if (!event) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Event not found",
+          },
+          { status: 404 },
+        );
+      }
+
+      await revalidatePublicpage();
+
+      return NextResponse.json({
+        success: true,
+        message: "Event status updated successfully",
+        data: event,
+      });
+    }
+
     const {
       title,
       slug,

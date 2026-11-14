@@ -89,6 +89,41 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       );
     }
 
+    // Status-only update
+    if (
+      Object.keys(body).length === 1 &&
+      ["draft", "published"].includes(body.status)
+    ) {
+      const course = await populateCourse(
+        ExploreCourse.findByIdAndUpdate(
+          id,
+          {
+            $set: {
+              status: body.status,
+            },
+          },
+          {
+            new: true,
+            runValidators: true,
+          },
+        ),
+      ).lean();
+
+      if (!course) {
+        return NextResponse.json(
+          { success: false, message: "Course not found." },
+          { status: 404 },
+        );
+      }
+
+      await revalidatePublicpage();
+
+      return NextResponse.json({
+        success: true,
+        course: flattenCourseReferences(course as Record<string, unknown>),
+      });
+    }
+
     const payload = getCoursePayload(body);
 
     if (payload.error || !payload.data) {

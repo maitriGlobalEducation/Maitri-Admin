@@ -34,6 +34,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           closeOnClick
           pauseOnHover
           theme="dark"
+          closeButton={false}
+          style={{ width: "fit-content", minWidth: "auto" }}
+          toastStyle={{ width: "fit-content" }}
         />
       </body>
     </html>

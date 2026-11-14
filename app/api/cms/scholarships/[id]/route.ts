@@ -70,6 +70,42 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
     const body = await request.json();
 
+    // Status-only update
+    if (
+      body &&
+      typeof body === "object" &&
+      !Array.isArray(body) &&
+      Object.keys(body).length === 1 &&
+      ["draft", "published"].includes(body.status)
+    ) {
+      const scholarship = await Scholarship.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            status: body.status,
+          },
+        },
+        {
+          new: true,
+          runValidators: true,
+        },
+      );
+
+      if (!scholarship) {
+        return NextResponse.json(
+          { success: false, message: "Scholarship not found" },
+          { status: 404 },
+        );
+      }
+
+      await revalidatePublicpage();
+
+      return NextResponse.json({
+        success: true,
+        data: scholarship,
+      });
+    }
+
     const {
       title,
       description,

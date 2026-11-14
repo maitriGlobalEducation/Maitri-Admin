@@ -1,15 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CalendarDays, Edit, Plus, Trash2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { CalendarDays, Edit, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 
 import type { Event } from "@/types/event";
 import { getEvents } from "@/services/event.service";
 import EventForm from "./EventForm";
 import { statusDotStyles, statusStyles } from "@/lib/styles/publishStatusStyle";
+import StatusSwitch, {
+  StatusType,
+} from "@/components/Common Components/StatusSwitch";
+import { formatDate } from "@/helpers/date";
+import DataTable, {
+  DataTableColumn,
+} from "@/components/Common Components/DataTable";
 
 export default function EventsManager() {
+  const ITEMS_PER_PAGE = 10;
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalEvents, setTotalEvents] = useState(0);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [fetchError, setFetchError] = useState("");
   const [events, setEvents] = useState<Event[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -17,24 +34,75 @@ export default function EventsManager() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
 
-  const fetchEvents = async () => {
-    try {
-      setIsLoading(true);
+  const fetchEvents = useCallback(
+    async (signal?: AbortSignal) => {
+      try {
+        setIsLoading(true);
+        setFetchError("");
 
-      const data = await getEvents();
+        const params = new URLSearchParams({
+          page: String(currentPage),
+          limit: String(ITEMS_PER_PAGE),
+        });
 
-      setEvents(data);
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to fetch events");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        if (debouncedSearch) {
+          params.set("search", debouncedSearch);
+        }
+
+        const response = await fetch(`/api/cms/events?${params.toString()}`, {
+          signal,
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.message ?? "Failed to fetch events");
+        }
+
+        setEvents(result.data);
+        setTotalEvents(result.pagination.total);
+        setTotalPages(Math.max(1, result.pagination.totalPages));
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+
+        console.error("FETCH EVENTS ERROR:", error);
+
+        const message =
+          error instanceof Error ? error.message : "Failed to fetch events";
+
+        setFetchError(message);
+        setEvents([]);
+        toast.error(message);
+      } finally {
+        if (!signal?.aborted) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [currentPage, debouncedSearch],
+  );
 
   useEffect(() => {
-    fetchEvents();
-  }, []);
+    const timeout = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 400);
+
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchEvents(controller.signal);
+
+    return () => controller.abort();
+  }, [fetchEvents, refreshKey]);
 
   const handleCreate = () => {
     setSelectedEvent(null);
@@ -48,6 +116,53 @@ export default function EventsManager() {
       top: 0,
       behavior: "smooth",
     });
+  };
+
+  const handleEventStatusChange = async (
+    eventId: string,
+    newStatus: StatusType,
+  ) => {
+    try {
+      const response = await fetch(`/api/cms/events/${eventId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status: newStatus,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Unable to update event status.");
+      }
+
+      const updatedEvent = result.data;
+
+      if (!updatedEvent?._id) {
+        throw new Error("Invalid event response.");
+      }
+
+      setEvents((prev) =>
+        prev.map((event) =>
+          event._id === updatedEvent._id ? updatedEvent : event,
+        ),
+      );
+
+      toast.success(
+        `Event ${newStatus === "published" ? "published" : "moved to draft"} successfully`,
+      );
+    } catch (error) {
+      console.error("UPDATE EVENT STATUS ERROR:", error);
+
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to update event status.",
+      );
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -86,8 +201,12 @@ export default function EventsManager() {
   };
 
   const handleSuccess = async () => {
-    // setShowForm(false);
     setSelectedEvent(null);
+
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+      return;
+    }
 
     await fetchEvents();
   };
@@ -97,15 +216,62 @@ export default function EventsManager() {
     setSelectedEvent(null);
   };
 
-  const formatDate = (date: string) => {
-    if (!date) return "—";
+  const eventColumns: DataTableColumn<Event>[] = [
+    {
+      key: "event",
+      header: "Event",
+      cellClassName: "min-w-65",
+      render: (event) => (
+        <div className="flex items-center gap-3">
+          {event.cardImage ? (
+            <img
+              src={event.cardImage.url}
+              alt={event.title}
+              className="h-12 w-16 shrink-0 rounded-lg object-cover"
+            />
+          ) : (
+            <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded-lg bg-zinc-100">
+              <CalendarDays className="h-5 w-5 text-zinc-400" />
+            </div>
+          )}
 
-    return new Date(date).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  };
+          <div className="min-w-0">
+            <p className="truncate font-medium text-zinc-900">{event.title}</p>
+
+            <p className="mt-0.5 truncate text-xs text-zinc-500">
+              /{event.slug}
+            </p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "date",
+      header: "Date",
+      cellClassName: "whitespace-nowrap text-zinc-600",
+      render: (event) => formatDate(event.eventDate),
+    },
+    {
+      key: "time",
+      header: "Time",
+      cellClassName: "whitespace-nowrap text-zinc-600",
+      render: (event) => event.eventTime || "—",
+    },
+    {
+      key: "status",
+      header: "Status",
+      cellClassName: "whitespace-nowrap",
+      render: (event) => (
+        <StatusSwitch
+          status={event.status}
+          size="sm"
+          onChange={(newStatus) =>
+            handleEventStatusChange(event._id, newStatus)
+          }
+        />
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -139,146 +305,70 @@ export default function EventsManager() {
       </div>
 
       {/* Events List */}
-      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-900" />
-          </div>
-        ) : events.length === 0 ? (
-          <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-zinc-100">
-              <CalendarDays className="h-6 w-6 text-zinc-500" />
+      <DataTable
+        columns={eventColumns}
+        data={events}
+        getRowKey={(event) => event._id}
+        loading={isLoading}
+        minWidth="900px"
+        toolbar={{
+          title: `Events (${totalEvents})`,
+          description: "Manage events, registration forms and event content.",
+          searchValue: searchQuery,
+          onSearchChange: setSearchQuery,
+          searchPlaceholder: "Search events...",
+          refreshing: isLoading,
+          onRefresh: () => setRefreshKey((prev) => prev + 1),
+        }}
+        pagination={{
+          currentPage,
+          totalPages,
+          onPageChange: setCurrentPage,
+        }}
+        emptyState={
+          fetchError ? (
+            <p className="text-sm text-red-600">{fetchError}</p>
+          ) : debouncedSearch ? (
+            <div>
+              <p className="text-sm font-medium text-zinc-700">
+                No events found
+              </p>
+              <p className="mt-1 text-sm text-zinc-400">
+                Try searching with a different keyword.
+              </p>
             </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center text-center">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-zinc-100">
+                <CalendarDays className="h-6 w-6 text-zinc-500" />
+              </div>
 
-            <h3 className="text-sm font-semibold text-zinc-900">
-              No events yet
-            </h3>
+              <p className="text-sm font-semibold text-zinc-900">
+                No events yet
+              </p>
 
-            <p className="mt-1 max-w-sm text-sm text-zinc-500">
-              Create your first event to start accepting registrations.
-            </p>
+              <p className="mt-1 max-w-sm text-sm text-zinc-500">
+                Create your first event to start accepting registrations.
+              </p>
 
-            <button
-              type="button"
-              onClick={handleCreate}
-              className="mt-5 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800"
-            >
-              <Plus className="h-4 w-4" />
-              Create Event
-            </button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="border-b border-zinc-200 bg-zinc-50">
-                <tr>
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    Event
-                  </th>
-
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    Date
-                  </th>
-
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    Time
-                  </th>
-
-                  <th className="px-6 py-4 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    Status
-                  </th>
-
-                  <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-zinc-100">
-                {events.map((event) => (
-                  <tr key={event._id} className="transition hover:bg-zinc-50">
-                    {/* Event */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        {event.cardImage ? (
-                          <img
-                            src={event.cardImage.url}
-                            alt={event.title}
-                            className="h-12 w-16 rounded-lg object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-12 w-16 items-center justify-center rounded-lg bg-zinc-100">
-                            <CalendarDays className="h-5 w-5 text-zinc-400" />
-                          </div>
-                        )}
-
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-zinc-900">
-                            {event.title}
-                          </p>
-
-                          <p className="mt-0.5 truncate text-xs text-zinc-500">
-                            /{event.slug}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Date */}
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-zinc-600">
-                      {formatDate(event.eventDate)}
-                    </td>
-
-                    {/* Time */}
-                    <td className="whitespace-nowrap px-6 py-4 text-sm text-zinc-600">
-                      {event.eventTime || "—"}
-                    </td>
-
-                    {/* Status */}
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium capitalize ${
-                          statusStyles[event.status] ??
-                          "bg-gray-100 text-gray-600 border border-gray-200"
-                        }`}
-                      >
-                        <span
-                          className={`size-2 rounded-full ${
-                            statusDotStyles[event.status] ?? "bg-gray-400"
-                          }`}
-                        />
-                        {event.status}
-                      </span>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="px-6 py-4">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleEdit(event)}
-                          className="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-700 transition hover:bg-zinc-50"
-                        >
-                          <Edit className="h-3.5 w-3.5" />
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setEventToDelete(event)}
-                          disabled={deletingId === event._id}
-                          className="cursor-pointer inline-flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+              <button
+                type="button"
+                onClick={handleCreate}
+                className="mt-5 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800"
+              >
+                <Plus className="h-4 w-4" />
+                Create Event
+              </button>
+            </div>
+          )
+        }
+        actions={{
+          onEdit: handleEdit,
+          onDelete: (event) => setEventToDelete(event),
+          editTitle: "Edit event",
+          deleteTitle: "Delete event",
+        }}
+      />
 
       {eventToDelete && (
         <div

@@ -300,6 +300,6 @@
    }
  }
 
- .institute-row-enter {
+ .table-row-enter {
    animation: row-enter 350ms ease-out both;
  }

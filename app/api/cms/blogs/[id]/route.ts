@@ -33,6 +33,49 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     const body = await request.json();
 
+    // Status-only update
+    if (
+      body &&
+      typeof body === "object" &&
+      !Array.isArray(body) &&
+      Object.keys(body).length === 1 &&
+      ["draft", "published"].includes(body.status)
+    ) {
+      await connectDB();
+
+      const existingBlog = await Blog.findById(id);
+
+      if (!existingBlog) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Blog not found",
+          },
+          { status: 404 },
+        );
+      }
+
+      existingBlog.status = body.status;
+
+      // First time this blog is published.
+      if (body.status === "published" && !existingBlog.publishedAt) {
+        existingBlog.publishedAt = new Date();
+      }
+
+      // If moved back to draft.
+      if (body.status === "draft") {
+        existingBlog.publishedAt = null;
+      }
+
+      await existingBlog.save();
+
+      return NextResponse.json({
+        success: true,
+        message: "Blog status updated successfully",
+        data: existingBlog,
+      });
+    }
+
     const {
       title,
       slug,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
 import type { Scholarship } from "@/types/scholarship";
@@ -8,8 +8,24 @@ import type { Scholarship } from "@/types/scholarship";
 import ScholarshipForm from "./ScholarshipForm";
 import { toast } from "react-toastify";
 import { statusDotStyles, statusStyles } from "@/lib/styles/publishStatusStyle";
+import StatusSwitch, {
+  StatusType,
+} from "@/components/Common Components/StatusSwitch";
+import DataTable, {
+  DataTableColumn,
+} from "@/components/Common Components/DataTable";
 
 export default function ScholarshipsManager() {
+  const ITEMS_PER_PAGE = 10;
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalScholarships, setTotalScholarships] = useState(0);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  const [refreshKey, setRefreshKey] = useState(0);
   const [scholarships, setScholarships] = useState<Scholarship[]>([]);
   const [selectedScholarship, setSelectedScholarship] =
     useState<Scholarship | null>(null);
@@ -21,34 +37,77 @@ export default function ScholarshipsManager() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState("");
 
-  const fetchScholarships = async () => {
-    try {
-      setIsLoading(true);
-      setError("");
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 400);
 
-      const response = await fetch("/api/cms/scholarships");
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.message ?? "Failed to fetch scholarships");
-      }
-
-      setScholarships(result.data);
-    } catch (error) {
-      console.error("FETCH SCHOLARSHIPS ERROR:", error);
-
-      setError(
-        error instanceof Error ? error.message : "Failed to fetch scholarships",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
 
   useEffect(() => {
-    fetchScholarships();
-  }, []);
+    setCurrentPage(1);
+  }, [debouncedSearch]);
+
+  const fetchScholarships = useCallback(
+    async (signal?: AbortSignal) => {
+      try {
+        setIsLoading(true);
+        setError("");
+
+        const params = new URLSearchParams({
+          page: String(currentPage),
+          limit: String(ITEMS_PER_PAGE),
+        });
+
+        if (debouncedSearch) {
+          params.set("search", debouncedSearch);
+        }
+
+        const response = await fetch(
+          `/api/cms/scholarships?${params.toString()}`,
+          { signal },
+        );
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.message ?? "Failed to fetch scholarships");
+        }
+
+        setScholarships(result.data);
+        setTotalScholarships(result.pagination.total);
+        setTotalPages(Math.max(1, result.pagination.totalPages));
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
+
+        console.error("FETCH SCHOLARSHIPS ERROR:", error);
+
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch scholarships",
+        );
+
+        setScholarships([]);
+      } finally {
+        if (!signal?.aborted) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [currentPage, debouncedSearch],
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchScholarships(controller.signal);
+
+    return () => controller.abort();
+  }, [fetchScholarships, refreshKey]);
 
   const handleSuccess = async () => {
     setSelectedScholarship(null);
@@ -120,6 +179,115 @@ export default function ScholarshipsManager() {
     }).format(new Date(date));
   };
 
+  async function handleScholarshipStatusChange(
+    scholarshipId: string,
+    newStatus: StatusType,
+  ) {
+    try {
+      const response = await fetch(`/api/cms/scholarships/${scholarshipId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status: newStatus,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(
+          result.message || "Unable to update scholarship status.",
+        );
+      }
+
+      const updatedScholarship = result.data;
+
+      if (!updatedScholarship?._id) {
+        throw new Error("Invalid scholarship data returned.");
+      }
+
+      setScholarships((previous) =>
+        previous.map((scholarship) =>
+          scholarship._id === updatedScholarship._id
+            ? updatedScholarship
+            : scholarship,
+        ),
+      );
+
+      toast.success(
+        `Scholarship ${
+          newStatus === "published" ? "published" : "moved to draft"
+        } successfully.`,
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to update scholarship status.";
+
+      toast.error(message);
+    }
+  }
+
+  const scholarshipColumns: DataTableColumn<Scholarship>[] = [
+    {
+      key: "scholarship",
+      header: "Scholarship",
+      cellClassName: "min-w-65",
+      render: (scholarship) => (
+        <div className="flex items-center gap-3">
+          {scholarship.cardImage ? (
+            <img
+              src={scholarship.cardImage.url}
+              alt=""
+              className="h-12 w-16 rounded-lg border border-zinc-200 object-cover"
+            />
+          ) : (
+            <div className="h-12 w-16 shrink-0 rounded-lg bg-zinc-100" />
+          )}
+
+          <div className="min-w-0">
+            <p className="truncate font-medium text-zinc-800">
+              {scholarship.title}
+            </p>
+
+            <p className="mt-0.5 truncate text-xs text-zinc-400">
+              /{scholarship.slug}
+            </p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "deadline",
+      header: "Deadline",
+      cellClassName: "whitespace-nowrap text-zinc-600",
+      render: (scholarship) => formatDate(scholarship.deadline),
+    },
+    {
+      key: "fields",
+      header: "Form Fields",
+      cellClassName: "text-zinc-600",
+      render: (scholarship) => scholarship.applicationForm?.fields?.length ?? 0,
+    },
+    {
+      key: "status",
+      header: "Status",
+      cellClassName: "whitespace-nowrap",
+      render: (scholarship) => (
+        <StatusSwitch
+          status={scholarship.status}
+          size="sm"
+          onChange={(newStatus) =>
+            handleScholarshipStatusChange(scholarship._id, newStatus)
+          }
+        />
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-8">
       {/* Form */}
@@ -145,148 +313,52 @@ export default function ScholarshipsManager() {
       </div>
 
       {/* List */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
-            Scholarships
-          </h1>
+      <DataTable
+        columns={scholarshipColumns}
+        data={scholarships}
+        getRowKey={(scholarship) => scholarship._id}
+        loading={isLoading}
+        minWidth="900px"
+        toolbar={{
+          title: `Scholarships (${totalScholarships})`,
+          description: "Manage scholarships and their application forms.",
+          searchValue: searchQuery,
+          onSearchChange: setSearchQuery,
+          searchPlaceholder: "Search scholarships...",
+          refreshing: isLoading,
+          onRefresh: () => setRefreshKey((prev) => prev + 1),
+        }}
+        pagination={{
+          currentPage,
+          totalPages,
+          onPageChange: setCurrentPage,
+        }}
+        emptyState={
+          error ? (
+            <p className="text-sm text-red-600">{error}</p>
+          ) : (
+            <div>
+              <p className="text-sm font-medium text-zinc-700">
+                {debouncedSearch
+                  ? "No scholarships found"
+                  : "No scholarships yet"}
+              </p>
 
-          <p className="mt-1 text-sm text-zinc-500">
-            Manage scholarships and their application forms.
-          </p>
-        </div>
-      </div>
-      <section>
-        {isLoading ? (
-          <div className="rounded-xl border border-zinc-200 bg-white px-6 py-12 text-center text-sm text-zinc-500">
-            Loading scholarships...
-          </div>
-        ) : error ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-6 py-12 text-center text-sm text-red-600">
-            {error}
-          </div>
-        ) : scholarships.length === 0 ? (
-          <div className="rounded-xl border border-zinc-200 bg-white px-6 py-12 text-center">
-            <p className="text-sm font-medium text-zinc-700">
-              No scholarships yet
-            </p>
-
-            <p className="mt-1 text-sm text-zinc-400">
-              Create your first scholarship above.
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-225 text-left">
-                <thead>
-                  <tr className="border-b border-zinc-200 bg-zinc-50">
-                    <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                      Scholarship
-                    </th>
-
-                    <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                      Deadline
-                    </th>
-
-                    <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                      Form Fields
-                    </th>
-
-                    <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                      Status
-                    </th>
-
-                    <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {scholarships.map((scholarship) => (
-                    <tr
-                      key={scholarship._id}
-                      className="border-b border-zinc-100 last:border-b-0"
-                    >
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          {scholarship.cardImage ? (
-                            <img
-                              src={scholarship.cardImage.url}
-                              alt=""
-                              className="h-12 w-16 rounded-lg border border-zinc-200 object-cover"
-                            />
-                          ) : (
-                            <div className="h-12 w-16 rounded-lg bg-zinc-100" />
-                          )}
-
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-medium text-zinc-800">
-                              {scholarship.title}
-                            </p>
-
-                            <p className="mt-0.5 truncate text-xs text-zinc-400">
-                              /{scholarship.slug}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="px-5 py-4 text-sm text-zinc-600">
-                        {formatDate(scholarship.deadline)}
-                      </td>
-
-                      <td className="px-5 py-4 text-sm text-zinc-600">
-                        {scholarship.applicationForm?.fields?.length ?? 0}
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <span
-                          className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium capitalize ${
-                            statusStyles[scholarship.status] ??
-                            "bg-gray-100 text-gray-600 border border-gray-200"
-                          }`}
-                        >
-                          <span
-                            className={`size-2 rounded-full ${
-                              statusDotStyles[scholarship.status] ??
-                              "bg-gray-400"
-                            }`}
-                          />
-                          {scholarship.status}
-                        </span>
-                      </td>
-
-                      <td className="px-5 py-4">
-                        <div className="flex justify-end gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleEdit(scholarship)}
-                            className="cursor-pointer rounded-lg p-2 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700"
-                            title="Edit scholarship"
-                          >
-                            <Pencil size={16} />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => setScholarshipToDelete(scholarship)}
-                            className="cursor-pointer rounded-lg p-2 text-zinc-400 transition hover:bg-red-50 hover:text-red-600"
-                            title="Delete scholarship"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <p className="mt-1 text-sm text-zinc-400">
+                {debouncedSearch
+                  ? "Try searching with a different keyword."
+                  : "Create your first scholarship above."}
+              </p>
             </div>
-          </div>
-        )}
-      </section>
+          )
+        }
+        actions={{
+          onEdit: handleEdit,
+          onDelete: (scholarship) => setScholarshipToDelete(scholarship),
+          editTitle: "Edit scholarship",
+          deleteTitle: "Delete scholarship",
+        }}
+      />
 
       {/* Delete Confirmation */}
       {scholarshipToDelete && (

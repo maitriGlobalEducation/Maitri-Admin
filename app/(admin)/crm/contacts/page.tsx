@@ -6,6 +6,7 @@ import ContactSubmission from "@/models/ContactSubmission";
 export const dynamic = "force-dynamic";
 
 import type { CRMColumn } from "@/components/crm/CRMRecordsTable";
+import { formatDate } from "@/helpers/date";
 
 const columns: CRMColumn[] = [
   {
@@ -69,7 +70,7 @@ export default async function ContactEnquiriesPage() {
             label: "Profiling consent",
             value: formatValue(submission.profilingConsent),
           },
-          { label: "Submitted at", value: formatValue(submission.createdAt) },
+          { label: "Submitted at", value: formatDate(submission.createdAt) },
         ],
       ),
       email: String(submission.email ?? "—"),

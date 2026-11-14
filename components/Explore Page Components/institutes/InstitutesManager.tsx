@@ -21,6 +21,12 @@ import {
 } from "@/types/explore-institute";
 import { statusDotStyles, statusStyles } from "@/lib/styles/publishStatusStyle";
 import { formatDate } from "@/helpers/date";
+import StatusSwitch, {
+  StatusType,
+} from "@/components/Common Components/StatusSwitch";
+import DataTable, {
+  DataTableColumn,
+} from "@/components/Common Components/DataTable";
 
 type InstituteForm = Omit<ExploreInstituteInput, "campuses"> & {
   areas: string[];
@@ -459,6 +465,56 @@ export default function InstitutesManager() {
     }
   }
 
+  async function handleInstituteStatusChange(
+    instituteId: string,
+    newStatus: StatusType,
+  ) {
+    try {
+      const response = await fetch(
+        `/api/cms/explore/institutes/${instituteId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            status: newStatus,
+          }),
+        },
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || "Unable to update institute status.");
+      }
+
+      const updatedInstitute: InstituteRecord = result.institute;
+
+      if (!updatedInstitute?._id) {
+        throw new Error("Invalid institute data returned.");
+      }
+
+      // Update institute directly in the existing state.
+      setInstitutes((previous) =>
+        previous.map((institute) =>
+          institute._id === updatedInstitute._id ? updatedInstitute : institute,
+        ),
+      );
+
+      toast.success(
+        `Institute ${newStatus === "published" ? "published" : "moved to draft"} successfully.`,
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to update institute status.";
+
+      toast.error(message);
+    }
+  }
+
   async function deleteInstitute() {
     if (!instituteToDelete || isDeleting) return;
 
@@ -505,6 +561,114 @@ export default function InstitutesManager() {
       setIsDeleting(false);
     }
   }
+
+  type InstituteRow = (typeof institutes)[number];
+
+  const instituteColumns: DataTableColumn<InstituteRow>[] = [
+    {
+      key: "logo",
+      header: "Logo",
+      headerClassName: "w-20",
+      cellClassName: "w-20",
+      render: (institute) =>
+        institute.logo?.url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={institute.logo.url}
+            alt={`${institute.name} logo`}
+            className="size-12 rounded-lg border border-zinc-200 bg-white object-contain p-1"
+          />
+        ) : (
+          <div className="flex size-12 items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-zinc-50 text-[10px] text-zinc-400">
+            No logo
+          </div>
+        ),
+    },
+    {
+      key: "institute",
+      header: "Institute",
+      render: (institute) => (
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-zinc-900">
+            {institute.name}
+          </p>
+          <p className="mt-1 truncate text-zinc-500">
+            {formatDate(institute.createdAt)}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: "areas",
+      header: "Areas",
+      render: (institute) => {
+        const areaNames = getReferenceNames(institute.areas);
+
+        return areaNames.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {areaNames.slice(0, 2).map((name, index) => (
+              <span
+                key={`${name}-${index}`}
+                className="max-w-full truncate rounded-md bg-zinc-200 px-2 py-1 font-medium text-zinc-600"
+              >
+                {name}
+              </span>
+            ))}
+
+            {areaNames.length > 2 && (
+              <span className="rounded-md bg-zinc-200 px-2 py-1 font-medium text-zinc-500">
+                +{areaNames.length - 2}
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className="text-zinc-400">No areas</span>
+        );
+      },
+    },
+    {
+      key: "campuses",
+      header: "Campuses",
+      render: (institute) => {
+        const campusNames = getReferenceNames(institute.campuses);
+
+        return campusNames.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5">
+            {campusNames.slice(0, 2).map((name, index) => (
+              <span
+                key={`${name}-${index}`}
+                className="max-w-full truncate rounded-md bg-zinc-200 px-2 py-1 font-medium text-zinc-600"
+              >
+                {name}
+              </span>
+            ))}
+
+            {campusNames.length > 2 && (
+              <span className="rounded-md bg-zinc-200 px-2 py-1 font-medium text-zinc-500">
+                +{campusNames.length - 2}
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className="text-zinc-400">No campuses</span>
+        );
+      },
+    },
+    {
+      key: "status",
+      header: "Status",
+      cellClassName: "whitespace-nowrap",
+      render: (institute) => (
+        <StatusSwitch
+          status={institute.status}
+          size="sm"
+          onChange={(newStatus) =>
+            handleInstituteStatusChange(institute._id, newStatus)
+          }
+        />
+      ),
+    },
+  ];
 
   return (
     <div className="mx-auto w-full space-y-8 p-4 md:p-6">
@@ -755,33 +919,6 @@ export default function InstitutesManager() {
           </div>
         </section>
 
-        {/* <div>
-            <label className={labelClass}>Display order</label>
-            <input
-              className={inputClass}
-              type="number"
-              min={0}
-              step={1}
-              value={form.sortOrder}
-              onChange={(event) =>
-                updateField("sortOrder", Number(event.target.value))
-              }
-            />
-          </div> */}
-
-        {/* <label className="flex cursor-pointer items-center gap-2 self-end rounded-lg border border-zinc-200 p-3 text-sm">
-            <input
-              type="checkbox"
-              checked={form.featured}
-              onChange={(event) =>
-                updateField("featured", event.target.checked)
-              }
-              className="size-4 accent-orange-600"
-            />
-            Feature this institute
-          </label> */}
-        {/* </section> */}
-
         <div className="flex flex-wrap gap-3">
           <button
             type="submit"
@@ -805,302 +942,64 @@ export default function InstitutesManager() {
         </div>
       </form>
 
-      <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-        {/* Header */}
-        <div className="flex flex-col gap-4 border-b border-zinc-200 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="font-semibold text-zinc-900">
-              Existing institutes ({totalInstitutes})
-            </h2>
-
-            <p className="mt-1 text-xs text-zinc-500">
-              {institutes.length > 0
-                ? `Showing ${(currentPage - 1) * ITEMS_PER_PAGE + 1}–${Math.min(
-                    currentPage * ITEMS_PER_PAGE,
-                    totalInstitutes,
-                  )} of ${totalInstitutes}`
-                : "Manage your institute records"}
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-zinc-400" />
-
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search institutes..."
-                className="h-10 w-full rounded-lg border border-zinc-300 bg-white pr-9 pl-9 text-sm outline-none transition placeholder:text-zinc-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 sm:w-64"
-              />
-
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  aria-label="Clear search"
-                  className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer text-zinc-400 hover:text-zinc-700"
-                >
-                  <X className="size-4" />
-                </button>
-              )}
-            </div>
-
-            <button
-              type="button"
-              disabled={dataLoading}
-              onClick={() => {
-                pageCache.current.clear();
-                void loadPage(currentPage, debouncedSearch, true);
-                void loadReferenceData();
-              }}
-              className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm font-medium text-orange-600 transition-colors hover:bg-orange-50 hover:text-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <RefreshCw
-                className={`size-4 ${dataLoading ? "animate-spin" : ""}`}
-              />
-            </button>
-          </div>
-        </div>
-
-        {loading ? (
-          <InstituteTableSkeleton />
-        ) : institutes.length === 0 ? (
-          <div className="px-5 py-12 text-center">
+      <DataTable
+        columns={instituteColumns}
+        data={institutes}
+        getRowKey={(institute) => institute._id}
+        loading={loading || pageLoading}
+        loadingState={
+          <p className="text-sm text-zinc-500">Loading institutes...</p>
+        }
+        emptyState={
+          <div className="py-2 text-center">
             <p className="text-sm font-medium text-zinc-700">
               {debouncedSearch
                 ? `No institutes found matching "${debouncedSearch}".`
                 : "No institutes yet."}
             </p>
+
             <p className="mt-1 text-xs text-zinc-500">
               {debouncedSearch
                 ? "Try searching with a different name, area, or campus."
                 : "Create your first institute using the form above."}
             </p>
           </div>
-        ) : (
-          <>
-            {/* Table */}
-            <div className="overflow-x-auto">
-              <div className="min-w-237.5">
-                {/* Column headings */}
-                <div className="grid grid-cols-[70px_minmax(190px,1.2fr)_minmax(110px,0.8fr)_minmax(180px,1.5fr)_110px_130px] items-center gap-4 border-b border-zinc-200 bg-zinc-50 px-5 py-3">
-                  {[
-                    "Logo",
-                    "Institute",
-                    "Areas",
-                    "Campuses",
-                    "Status",
-                    "Actions",
-                  ].map((heading) => (
-                    <p
-                      key={heading}
-                      className="text-[11px] font-semibold tracking-wider text-zinc-500 uppercase"
-                    >
-                      {heading}
-                    </p>
-                  ))}
-                </div>
-
-                {/* Records */}
-                <div className="divide-y divide-zinc-100">
-                  {institutes.map((institute, index) => {
-                    const areaNames = getReferenceNames(institute.areas);
-                    const campusNames = getReferenceNames(institute.campuses);
-
-                    return (
-                      <div
-                        key={institute._id}
-                        className="institute-row-enter grid grid-cols-[70px_minmax(190px,1.2fr)_minmax(110px,0.8fr)_minmax(180px,1.5fr)_110px_130px] items-center gap-4 px-5 py-4 transition-colors hover:bg-zinc-50/70"
-                        style={{ animationDelay: `${index * 35}ms` }}
-                      >
-                        {/* Logo */}
-                        <div>
-                          {institute.logo?.url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={institute.logo.url}
-                              alt={`${institute.name} logo`}
-                              className="size-12 rounded-lg border border-zinc-200 bg-white object-contain p-1"
-                            />
-                          ) : (
-                            <div className="flex size-12 items-center justify-center rounded-lg border border-dashed border-zinc-300 bg-zinc-50 text-[10px] text-zinc-400">
-                              No logo
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Institute */}
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-zinc-900">
-                            {institute.name}
-                          </p>
-                          <p className="mt-1 truncate text-xs text-zinc-500">
-                            {formatDate(institute.createdAt)}
-                          </p>
-
-                          {institute.featured && (
-                            <span className="mt-2 inline-flex rounded-md bg-orange-50 px-2 py-0.5 text-[10px] font-medium text-orange-700">
-                              Featured
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Areas */}
-                        <div className="min-w-0">
-                          {areaNames.length > 0 ? (
-                            <div className="flex flex-wrap gap-1.5">
-                              {areaNames.slice(0, 2).map((name, index) => (
-                                <span
-                                  key={`${name}-${index}`}
-                                  className="max-w-full truncate rounded-md font-medium bg-zinc-200 px-2 py-1 text-xs text-zinc-600"
-                                >
-                                  {name}
-                                </span>
-                              ))}
-                              {areaNames.length > 2 && (
-                                <span className="rounded-md bg-zinc-200 font-medium px-2 py-1 text-xs text-zinc-500">
-                                  +{areaNames.length - 2}
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-zinc-400">
-                              No areas
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Campuses */}
-                        <div className="min-w-0">
-                          {campusNames.length > 0 ? (
-                            <div className="flex flex-wrap gap-1.5">
-                              {campusNames.slice(0, 2).map((name, index) => (
-                                <span
-                                  key={`${name}-${index}`}
-                                  className="max-w-full truncate rounded-md font-medium bg-zinc-200 px-2 py-1 text-xs text-zinc-600"
-                                >
-                                  {name}
-                                </span>
-                              ))}
-                              {campusNames.length > 2 && (
-                                <span className="rounded-md bg-zinc-200 font-medium px-2 py-1 text-xs text-zinc-500">
-                                  +{campusNames.length - 2}
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-zinc-400">
-                              No campuses
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Status */}
-                        <div>
-                          <span
-                            className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium capitalize ${
-                              statusStyles[institute.status] ??
-                              "bg-gray-100 text-gray-600 border border-gray-200"
-                            }`}
-                          >
-                            <span
-                              className={`size-2 rounded-full ${
-                                statusDotStyles[institute.status] ??
-                                "bg-gray-400"
-                              }`}
-                            />
-                            {institute.status}
-                          </span>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => startEdit(institute)}
-                            className="cursor-pointer rounded-md p-2 text-sky-600 hover:bg-sky-100"
-                            title="Edit course"
-                          >
-                            <Pencil className="size-4" />
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDeleteError("");
-                              setInstituteToDelete(institute);
-                            }}
-                            className="cursor-pointer rounded-md p-2 text-red-500 hover:bg-red-100"
-                            title="Delete course"
-                          >
-                            <Trash2 className="size-4" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between border-t border-zinc-200 px-5 py-3">
-                <button
-                  type="button"
-                  disabled={currentPage === 1 || pageLoading}
-                  onClick={() => setCurrentPage((page) => page - 1)}
-                  className="cursor-pointer rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Previous
-                </button>
-
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }, (_, index) => index + 1)
-                    .filter(
-                      (page) =>
-                        page === 1 ||
-                        page === totalPages ||
-                        Math.abs(page - currentPage) <= 1,
-                    )
-                    .map((page, index, pages) => (
-                      <span key={page} className="flex items-center gap-1">
-                        {index > 0 && pages[index - 1] !== page - 1 && (
-                          <span className="px-1 text-zinc-400">...</span>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => setCurrentPage(page)}
-                          disabled={pageLoading || currentPage === page}
-                          className={`size-9 cursor-pointer rounded-lg text-sm font-medium transition ${
-                            currentPage === page
-                              ? "bg-orange-600 text-white"
-                              : "text-zinc-600 hover:bg-zinc-100"
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      </span>
-                    ))}
-                </div>
-
-                <button
-                  type="button"
-                  disabled={currentPage === totalPages || pageLoading}
-                  onClick={() => setCurrentPage((page) => page + 1)}
-                  className="cursor-pointer rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Next
-                </button>
-              </div>
-            )}
-          </>
-        )}
-      </section>
+        }
+        minWidth="950px"
+        toolbar={{
+          title: `Existing institutes (${totalInstitutes})`,
+          description:
+            institutes.length > 0
+              ? `Showing ${(currentPage - 1) * ITEMS_PER_PAGE + 1}–${Math.min(
+                  currentPage * ITEMS_PER_PAGE,
+                  totalInstitutes,
+                )} of ${totalInstitutes}`
+              : "Manage your institute records",
+          searchValue: searchQuery,
+          onSearchChange: setSearchQuery,
+          searchPlaceholder: "Search institutes...",
+          refreshing: dataLoading,
+          onRefresh: () => {
+            pageCache.current.clear();
+            void loadPage(currentPage, debouncedSearch, true);
+            void loadReferenceData();
+          },
+        }}
+        pagination={{
+          currentPage,
+          totalPages,
+          onPageChange: setCurrentPage,
+        }}
+        actions={{
+          onEdit: startEdit,
+          onDelete: (blog) => {
+            setDeleteError("");
+            setInstituteToDelete(blog);
+          },
+          editTitle: "Edit Institute",
+          deleteTitle: "Delete Institute",
+        }}
+      />
 
       {validationError && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm">
@@ -1145,7 +1044,6 @@ export default function InstitutesManager() {
         open={!!instituteToDelete}
         title="Delete institute?"
         itemName={instituteToDelete?.name}
-        description="This will permanently remove the institute and its associated information."
         isDeleting={isDeleting}
         error={deleteError}
         onClose={() => {
@@ -1156,49 +1054,6 @@ export default function InstitutesManager() {
         }}
         onConfirm={deleteInstitute}
       />
-    </div>
-  );
-}
-
-function InstituteTableSkeleton() {
-  return (
-    <div className="divide-y divide-zinc-100">
-      {Array.from({ length: 10 }).map((_, index) => (
-        <div
-          key={index}
-          className="grid animate-pulse grid-cols-[70px_minmax(190px,1.5fr)_110px_minmax(150px,1fr)_minmax(160px,1.2fr)_150px] items-center gap-4 px-5 py-4"
-        >
-          {/* Logo */}
-          <div className="size-12 rounded-lg bg-zinc-200" />
-
-          {/* Institute */}
-          <div className="space-y-2">
-            <div className="h-3.5 w-32 rounded bg-zinc-200" />
-            <div className="h-3 w-24 rounded bg-zinc-100" />
-          </div>
-
-          {/* Status */}
-          <div className="h-6 w-16 rounded-md bg-zinc-200" />
-
-          {/* Areas */}
-          <div className="flex gap-1.5">
-            <div className="h-6 w-16 rounded-md bg-zinc-200" />
-            <div className="h-6 w-12 rounded-md bg-zinc-100" />
-          </div>
-
-          {/* Campuses */}
-          <div className="flex gap-1.5">
-            <div className="h-6 w-20 rounded-md bg-zinc-200" />
-            <div className="h-6 w-12 rounded-md bg-zinc-100" />
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-2">
-            <div className="h-8 w-14 rounded-lg bg-zinc-200" />
-            <div className="h-8 w-16 rounded-lg bg-zinc-100" />
-          </div>
-        </div>
-      ))}
     </div>
   );
 }

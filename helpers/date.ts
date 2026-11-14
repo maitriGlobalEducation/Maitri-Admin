@@ -10,22 +10,35 @@ export function formatDate(date: string | Date): string {
   return `${formatted} (${timezone})`;
 }
 
-export function formatDateWithTimezone(date: string | Date) {
-  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+export function getDashboardDateRanges() {
+  const now = new Date();
 
-  const formattedDate = new Intl.DateTimeFormat("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-    timeZone: userTimezone,
-  }).format(new Date(date));
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  );
+
+  const startOfTomorrow = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() + 1,
+  );
+
+  // Monday is the first day of the week.
+  const daysFromMonday = (now.getDay() + 6) % 7;
+
+  const startOfWeek = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() - daysFromMonday,
+  );
 
   return {
-    formattedDate,
-    timezone: userTimezone,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    todayStart: startOfToday.toISOString(),
+    tomorrowStart: startOfTomorrow.toISOString(),
+    weekStart: startOfWeek.toISOString(),
+    now: now.toISOString(),
   };
 }

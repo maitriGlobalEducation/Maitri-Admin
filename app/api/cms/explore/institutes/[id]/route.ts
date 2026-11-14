@@ -67,6 +67,48 @@ export async function PUT(request: NextRequest, { params }: RouteContext) {
       );
     }
 
+    // Status-only update
+    if (
+      Object.keys(body).length === 1 &&
+      ["draft", "published"].includes(body.status)
+    ) {
+      const institute = await populateInstitute(
+        ExploreInstitute.findByIdAndUpdate(
+          id,
+          {
+            $set: {
+              status: body.status,
+            },
+          },
+          {
+            new: true,
+            runValidators: true,
+          },
+        ),
+      ).lean();
+
+      if (!institute) {
+        return NextResponse.json(
+          { success: false, message: "Institute not found." },
+          { status: 404 },
+        );
+      }
+
+      await revalidatePublicpage();
+
+      const formattedInstitute = {
+        ...institute,
+        areas: flattenReferences(institute.areas, "areaId"),
+        brands: flattenReferences(institute.brands, "brandId"),
+        campuses: flattenReferences(institute.campuses, "campusId"),
+      };
+
+      return NextResponse.json({
+        success: true,
+        institute: formattedInstitute,
+      });
+    }
+
     const payload = getInstitutePayload(body);
 
     if (payload.error || !payload.data) {

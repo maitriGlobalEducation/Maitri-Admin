@@ -272,7 +272,7 @@ export default function AdminSidebar({ admin }: AdminSidebarProps) {
                       href={section.href}
                       className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
                         active
-                          ? "bg-orange-50 font-medium text-[#e94717]"
+                          ? "bg-zinc-100 font-medium text-zinc-950"
                           : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950"
                       }`}
                     >

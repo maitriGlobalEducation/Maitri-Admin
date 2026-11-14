@@ -2,12 +2,13 @@
 
 import { useEffect } from "react";
 import { AlertTriangle, LoaderCircle, X } from "lucide-react";
+import type { ReactNode } from "react";
 
 type Props = {
   open: boolean;
   title?: string;
   itemName?: string;
-  description?: string;
+  description?: ReactNode;
   isDeleting?: boolean;
   error?: string;
   confirmLabel?: string;
@@ -84,15 +85,23 @@ export default function ConfirmDeleteModal({
           {title}
         </h3>
 
-        <p className="mt-2 text-sm leading-6 text-zinc-500">
-          {description}{" "}
+        <div className="mt-2 text-sm leading-6 text-zinc-500">
+          {/* {description} */}
+
           {itemName && (
-            <>
-              Are you sure you want to delete{" "}
-              <span className="font-semibold text-zinc-800">"{itemName}"</span>?
-            </>
+            <div>
+              {" "}
+              <p>
+                Are you sure you want to delete{" "}
+                <span className="font-semibold text-zinc-800">
+                  "{itemName}"
+                </span>
+                ?
+              </p>
+              <p>This action cannot be undone.</p>
+            </div>
           )}
-        </p>
+        </div>
 
         {error && (
           <p

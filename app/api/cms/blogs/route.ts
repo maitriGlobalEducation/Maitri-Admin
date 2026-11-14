@@ -131,21 +131,71 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await connectDB();
 
-    // Public visitors should only see published blogs.
-    // Authenticated admins can see drafts as well.
     const { admin } = await authorizeAdmin();
 
-    const filter = admin ? {} : { status: "published" };
+    const { searchParams } = new URL(request.url);
 
-    const blogs = await Blog.find(filter).sort({ createdAt: -1 }).lean();
+    const search = searchParams.get("search")?.trim() || "";
+
+    const shouldPaginate =
+      searchParams.has("page") || searchParams.has("limit");
+
+    const filter: Record<string, unknown> = admin
+      ? {}
+      : { status: "published" };
+
+    // Search by blog title or category.
+    if (search) {
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+      filter.$or = [
+        { title: { $regex: escapedSearch, $options: "i" } },
+        { category: { $regex: escapedSearch, $options: "i" } },
+      ];
+    }
+
+    // Preserve existing behavior when pagination isn't requested.
+    if (!shouldPaginate) {
+      const blogs = await Blog.find(filter).sort({ createdAt: -1 }).lean();
+
+      return NextResponse.json({
+        success: true,
+        data: blogs,
+      });
+    }
+
+    const page = Math.max(
+      1,
+      Number.parseInt(searchParams.get("page") || "1", 10) || 1,
+    );
+
+    const limit = Math.min(
+      100,
+      Math.max(1, Number.parseInt(searchParams.get("limit") || "10", 10) || 10),
+    );
+
+    const skip = (page - 1) * limit;
+
+    const [blogs, total] = await Promise.all([
+      Blog.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+
+      Blog.countDocuments(filter),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
 
     return NextResponse.json({
       success: true,
       data: blogs,
+      pagination: {
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+      },
     });
   } catch (error) {
     console.error("GET BLOGS ERROR:", error);

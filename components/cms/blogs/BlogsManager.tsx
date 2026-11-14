@@ -7,10 +7,32 @@ import { toast } from "react-toastify";
 import BlogForm from "./BlogForm";
 import { Blog } from "@/types/blog";
 import { statusDotStyles, statusStyles } from "@/lib/styles/publishStatusStyle";
+import StatusSwitch, {
+  StatusType,
+} from "@/components/Common Components/StatusSwitch";
+import DataTable, {
+  DataTableColumn,
+} from "@/components/Common Components/DataTable";
+import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
 
 export default function BlogsManager() {
   const [blogs, setBlogs] = useState<Blog[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalBlogs, setTotalBlogs] = useState(0);
+  const [pageLoading, setPageLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 400);
+
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
+
+  const PAGE_SIZE = 10;
 
   const [selectedBlog, setSelectedBlog] = useState<Blog | null>(null);
 
@@ -19,31 +41,41 @@ export default function BlogsManager() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
-  const fetchBlogs = async () => {
+  const fetchBlogs = async (page: number, search = debouncedSearch) => {
     try {
-      setIsLoading(true);
+      setPageLoading(true);
 
-      const response = await fetch("/api/cms/blogs");
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(PAGE_SIZE),
+      });
 
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.message ?? "Failed to fetch blogs");
+      if (search) {
+        params.set("search", search);
       }
 
-      setBlogs(result.data);
-    } catch (error) {
-      console.error("FETCH BLOGS ERROR:", error);
+      const response = await fetch(`/api/cms/blogs?${params.toString()}`);
+      const result = await response.json();
 
-      toast.error("Failed to fetch blogs");
+      if (response.ok && result.success) {
+        setBlogs(result.data);
+        setTotalPages(result.pagination.totalPages);
+        setTotalBlogs(result.pagination.total);
+      }
+    } catch (error) {
+      console.error("Failed to fetch blogs:", error);
     } finally {
-      setIsLoading(false);
+      setPageLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchBlogs();
-  }, []);
+    setCurrentPage(1);
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    fetchBlogs(currentPage, debouncedSearch);
+  }, [currentPage, debouncedSearch]);
 
   const handleEditBlog = (blog: Blog) => {
     setSelectedBlog(blog);
@@ -66,13 +98,56 @@ export default function BlogsManager() {
   const handleFormSuccess = async () => {
     setSelectedBlog(null);
 
-    await fetchBlogs();
+    await fetchBlogs(1);
 
     window.scrollTo({
       top: 0,
       behavior: "smooth",
     });
   };
+
+  async function handleBlogStatusChange(blogId: string, newStatus: StatusType) {
+    try {
+      const response = await fetch(`/api/cms/blogs/${blogId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status: newStatus,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message || "Unable to update blog status.");
+      }
+
+      const updatedBlog = result.data;
+
+      if (!updatedBlog?._id) {
+        throw new Error("Invalid blog data returned.");
+      }
+
+      setBlogs((previous) =>
+        previous.map((item) =>
+          item._id === updatedBlog._id ? updatedBlog : item,
+        ),
+      );
+
+      toast.success(
+        `Blog ${newStatus === "published" ? "published" : "moved to draft"} successfully.`,
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to update blog status.";
+
+      toast.error(message);
+    }
+  }
 
   const handleDeleteBlog = async () => {
     if (!blogToDelete || isDeleting) return;
@@ -95,7 +170,7 @@ export default function BlogsManager() {
 
       setBlogToDelete(null);
 
-      await fetchBlogs();
+      await fetchBlogs(1);
     } catch (error) {
       console.error("DELETE BLOG ERROR:", error);
 
@@ -109,6 +184,54 @@ export default function BlogsManager() {
       setIsDeleting(false);
     }
   };
+
+  const blogColumns: DataTableColumn<Blog>[] = [
+    {
+      key: "blog",
+      header: "Blog",
+      cellClassName: "min-w-65",
+      render: (blog) => (
+        <div className="flex items-center gap-3">
+          {blog.cardImage ? (
+            <img
+              src={blog.cardImage.url}
+              alt={blog.title}
+              className="h-10 w-14 rounded-md object-cover"
+            />
+          ) : (
+            <div className="h-10 w-14 rounded-md bg-zinc-100" />
+          )}
+
+          <div className="min-w-0">
+            <p className="truncate font-medium text-zinc-900">{blog.title}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "category",
+      header: "Category",
+      cellClassName: "text-zinc-600",
+      render: (blog) => blog.category,
+    },
+    {
+      key: "date",
+      header: "Date",
+      cellClassName: "whitespace-nowrap text-zinc-500",
+      render: (blog) => new Date(blog.createdAt).toLocaleDateString(),
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (blog) => (
+        <StatusSwitch
+          status={blog.status}
+          size="sm"
+          onChange={(newStatus) => handleBlogStatusChange(blog._id, newStatus)}
+        />
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-10">
@@ -132,205 +255,60 @@ export default function BlogsManager() {
         />
       </div>
 
-      <section>
-        <div className="mb-5 flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold text-zinc-950">Blogs</h2>
-
-            <p className="mt-1 text-sm text-zinc-500">
-              Manage your existing blogs.
-            </p>
-          </div>
-        </div>
-
-        <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
-          {isLoading ? (
-            <div className="p-8 text-center text-sm text-zinc-500">
-              Loading blogs...
-            </div>
-          ) : blogs.length === 0 ? (
-            <div className="p-10 text-center">
-              <p className="text-sm text-zinc-500">
-                No blogs have been created yet.
-              </p>
-
-              <button
-                type="button"
-                onClick={handleAddBlog}
-                className="mt-4 inline-flex cursor-pointer items-center gap-2 rounded-lg bg-zinc-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800"
-              >
-                <Plus size={16} />
-                Add Your First Blog
-              </button>
-            </div>
-          ) : (
-            <table className="w-full">
-              <thead className="border-b border-zinc-200 bg-zinc-50">
-                <tr>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    Blog
-                  </th>
-
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    Category
-                  </th>
-
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    Date
-                  </th>
-
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    Status
-                  </th>
-
-                  <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-zinc-100">
-                {blogs.map((blog) => (
-                  <tr key={blog._id} className="transition hover:bg-zinc-50">
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-3">
-                        {blog.cardImage ? (
-                          <img
-                            src={blog.cardImage.url}
-                            alt={blog.title}
-                            className="h-12 w-16 rounded-md object-cover"
-                          />
-                        ) : (
-                          <div className="h-12 w-16 rounded-md bg-zinc-100" />
-                        )}
-
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-zinc-900">
-                            {blog.title}
-                          </p>
-
-                          {/* <p className="mt-1 truncate text-xs text-zinc-500">
-                            /{blog.slug}
-                          </p> */}
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Category */}
-                    <td className="px-5 py-4 text-sm text-zinc-600">
-                      {blog.category}
-                    </td>
-
-                    {/* Date */}
-                    <td className="px-5 py-4 text-sm text-zinc-500">
-                      {new Date(blog.createdAt).toLocaleDateString()}
-                    </td>
-
-                    {/* Status */}
-                    <td className="px-5 py-4">
-                      <span
-                        className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium capitalize ${
-                          statusStyles[blog.status] ??
-                          "bg-gray-100 text-gray-600 border border-gray-200"
-                        }`}
-                      >
-                        <span
-                          className={`size-2 rounded-full ${
-                            statusDotStyles[blog.status] ?? "bg-gray-400"
-                          }`}
-                        />
-                        {blog.status}
-                      </span>
-                    </td>
-
-                    {/* Action buttons */}
-                    <td className="px-5 py-4">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleEditBlog(blog)}
-                          title="Edit blog"
-                          className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900"
-                        >
-                          <Pencil size={16} />
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setDeleteError("");
-                            setBlogToDelete(blog);
-                          }}
-                          title="Delete blog"
-                          className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-zinc-500 transition hover:bg-red-50 hover:text-red-600"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </section>
+      <DataTable
+        columns={blogColumns}
+        data={blogs}
+        getRowKey={(blog) => blog._id}
+        loading={pageLoading}
+        minWidth="850px"
+        emptyState={
+          <p className="text-xs text-zinc-500">
+            {debouncedSearch
+              ? `No blogs found matching "${debouncedSearch}".`
+              : "No blogs available."}
+          </p>
+        }
+        pagination={{
+          currentPage,
+          totalPages,
+          onPageChange: setCurrentPage,
+        }}
+        toolbar={{
+          title: `Blogs (${totalBlogs})`,
+          description: "Manage your blog posts",
+          searchValue: searchQuery,
+          onSearchChange: setSearchQuery,
+          searchPlaceholder: "Search blogs...",
+          refreshing: pageLoading,
+          onRefresh: () => fetchBlogs(currentPage, debouncedSearch),
+        }}
+        actions={{
+          onEdit: handleEditBlog,
+          onDelete: (blog) => {
+            setDeleteError("");
+            setBlogToDelete(blog);
+          },
+          editTitle: "Edit blog",
+          deleteTitle: "Delete blog",
+        }}
+      />
 
       {/* DELETE CONFIRMATION */}
       {blogToDelete && (
-        <div
-          onClick={() => {
+        <ConfirmDeleteModal
+          open={!!blogToDelete}
+          title="Delete blog?"
+          itemName={blogToDelete?.title}
+          isDeleting={isDeleting}
+          error={deleteError}
+          onClose={() => {
             if (isDeleting) return;
 
             setBlogToDelete(null);
             setDeleteError("");
           }}
-          className="fixed inset-0 z-60 flex items-center justify-center bg-black/40 p-4"
-        >
-          <div
-            onClick={(event) => event.stopPropagation()}
-            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
-          >
-            <h3 className="text-lg font-semibold text-zinc-950">
-              Delete blog?
-            </h3>
-
-            <p className="mt-2 text-sm leading-6 text-zinc-500">
-              Are you sure you want to delete{" "}
-              <span className="font-medium text-zinc-800">
-                "{blogToDelete.title}"
-              </span>
-              ? This action cannot be undone.
-            </p>
-
-            {deleteError && (
-              <p className="mt-3 text-sm text-red-600">{deleteError}</p>
-            )}
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={() => {
-                  setBlogToDelete(null);
-                  setDeleteError("");
-                }}
-                className="cursor-pointer rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={handleDeleteBlog}
-                className="cursor-pointer rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isDeleting ? "Deleting..." : "Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
+          onConfirm={handleDeleteBlog}
+        />
       )}
     </div>
   );
