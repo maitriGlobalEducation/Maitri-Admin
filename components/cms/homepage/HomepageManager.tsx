@@ -15,6 +15,7 @@ import HomepageSectionCard from "./HomepageSectionCard";
 import HomepageCareerChoicesForm from "./HomepageCareerChoicesForm";
 import type { HomepageCareerChoicesContent } from "@/types/homepage";
 import HomepageSEOForm, { HomepageSEO } from "./HomepageSEOForm";
+import HomepageSkeleton from "@/components/Skeleton Components/HomepageSkeleton";
 
 const emptyAboutContent: HomepageAboutContent = {
   image: null,
@@ -38,7 +39,6 @@ const emptyLocationsContent: HomepageLocationsContent = {
 export default function HomepageManager() {
   const [homepage, setHomepage] = useState<Homepage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  // const [hasError, setHasError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [savedHomepage, setSavedHomepage] = useState<Homepage | null>(null);
   const [openSection, setOpenSection] = useState<string | null>(null);
@@ -67,6 +67,8 @@ export default function HomepageManager() {
             metaKeywords: data.seo?.metaKeywords ?? [],
             focusKeyword: data.seo?.focusKeyword ?? "",
           });
+        } else {
+          toast.error("Homepage settings have not been initialized yet.");
         }
       } catch (error) {
         console.error(error);
@@ -400,7 +402,7 @@ export default function HomepageManager() {
   };
 
   if (isLoading) {
-    return null;
+    return <HomepageSkeleton />;
   }
 
   if (!homepage) {
