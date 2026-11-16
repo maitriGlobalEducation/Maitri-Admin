@@ -37,6 +37,8 @@ const emptyLocationsContent: HomepageLocationsContent = {
 
 export default function HomepageManager() {
   const [homepage, setHomepage] = useState<Homepage | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  // const [hasError, setHasError] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [savedHomepage, setSavedHomepage] = useState<Homepage | null>(null);
   const [openSection, setOpenSection] = useState<string | null>(null);
@@ -51,25 +53,30 @@ export default function HomepageManager() {
   const [homepageSEO, setHomepageSEO] = useState<HomepageSEO>(initialSEO);
 
   useEffect(() => {
-    getHomepage()
-      .then((data) => {
+    const fetchHomepage = async () => {
+      try {
+        const data = await getHomepage();
+
         if (data) {
           setHomepage(data);
           setSavedHomepage(data);
+
           setHomepageSEO({
             metaTitle: data.seo?.metaTitle ?? "",
             metaDescription: data.seo?.metaDescription ?? "",
             metaKeywords: data.seo?.metaKeywords ?? [],
             focusKeyword: data.seo?.focusKeyword ?? "",
           });
-        } else {
-          toast.error("Homepage settings have not been initialized yet.");
         }
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error(error);
         toast.error("Failed to load homepage settings");
-      });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchHomepage();
   }, []);
 
   const handleSave = async () => {
@@ -391,6 +398,10 @@ export default function HomepageManager() {
       };
     });
   };
+
+  if (isLoading) {
+    return null;
+  }
 
   if (!homepage) {
     return (

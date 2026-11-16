@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CalendarDays, Plus } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -31,34 +31,144 @@ export default function EventsManager() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
 
+  type EventPageData = {
+    events: typeof events;
+    totalEvents: number;
+    totalPages: number;
+  };
+
+  const pageCache = useRef(new Map<string, EventPageData>());
+
+  const requestControllers = useRef(new Map<string, AbortController>());
+
+  const getCacheKey = (page: number, search: string) =>
+    `${search.trim().toLowerCase()}-${page}`;
+
+  // Fetch events from API.
+  const getEventsPage = useCallback(
+    async (
+      page: number,
+      search: string,
+      signal?: AbortSignal,
+    ): Promise<EventPageData> => {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(ITEMS_PER_PAGE),
+      });
+
+      if (search) {
+        params.set("search", search);
+      }
+
+      const response = await fetch(`/api/cms/events?${params.toString()}`, {
+        signal,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message ?? "Failed to fetch events");
+      }
+
+      return {
+        events: result.data,
+        totalEvents: result.pagination.total,
+        totalPages: Math.max(1, result.pagination.totalPages),
+      };
+    },
+    [],
+  );
+
+  // Prefetch a page.
+  const prefetchPage = useCallback(
+    async (page: number, search: string) => {
+      if (page < 1) return;
+
+      const key = getCacheKey(page, search);
+
+      if (pageCache.current.has(key) || requestControllers.current.has(key)) {
+        return;
+      }
+
+      const controller = new AbortController();
+
+      requestControllers.current.set(key, controller);
+
+      try {
+        const result = await getEventsPage(page, search, controller.signal);
+
+        pageCache.current.set(key, result);
+      } catch (error) {
+        if (!(error instanceof Error && error.name === "AbortError")) {
+          console.error("Event prefetch failed:", error);
+        }
+      } finally {
+        if (requestControllers.current.get(key) === controller) {
+          requestControllers.current.delete(key);
+        }
+      }
+    },
+    [getEventsPage],
+  );
+
+  // Prefetch previous and next pages.
+  const prefetchAdjacentPages = useCallback(
+    (page: number, search: string, totalPages: number) => {
+      if (page > 1) {
+        void prefetchPage(page - 1, search);
+      }
+
+      if (page < totalPages) {
+        void prefetchPage(page + 1, search);
+      }
+    },
+    [prefetchPage],
+  );
+
+  // Main fetch function.
   const fetchEvents = useCallback(
-    async (signal?: AbortSignal) => {
+    async (signal?: AbortSignal, forceRefresh = false) => {
+      const key = getCacheKey(currentPage, debouncedSearch);
+
+      if (forceRefresh) {
+        pageCache.current.delete(key);
+      }
+
+      // Use cached data immediately.
+      const cached = pageCache.current.get(key);
+
+      if (cached) {
+        setEvents(cached.events);
+        setTotalEvents(cached.totalEvents);
+        setTotalPages(cached.totalPages);
+        setFetchError("");
+        setIsLoading(false);
+
+        prefetchAdjacentPages(currentPage, debouncedSearch, cached.totalPages);
+
+        return;
+      }
+
       try {
         setIsLoading(true);
         setFetchError("");
 
-        const params = new URLSearchParams({
-          page: String(currentPage),
-          limit: String(ITEMS_PER_PAGE),
-        });
-
-        if (debouncedSearch) {
-          params.set("search", debouncedSearch);
-        }
-
-        const response = await fetch(`/api/cms/events?${params.toString()}`, {
+        const result = await getEventsPage(
+          currentPage,
+          debouncedSearch,
           signal,
-        });
+        );
 
-        const result = await response.json();
+        if (signal?.aborted) return;
 
-        if (!response.ok || !result.success) {
-          throw new Error(result.message ?? "Failed to fetch events");
-        }
+        pageCache.current.set(key, result);
 
-        setEvents(result.data);
-        setTotalEvents(result.pagination.total);
-        setTotalPages(Math.max(1, result.pagination.totalPages));
+        setEvents(result.events);
+        setTotalEvents(result.totalEvents);
+        setTotalPages(result.totalPages);
+
+        // Prepare neighboring pages in background.
+        prefetchAdjacentPages(currentPage, debouncedSearch, result.totalPages);
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
           return;
@@ -78,8 +188,17 @@ export default function EventsManager() {
         }
       }
     },
-    [currentPage, debouncedSearch],
+    [currentPage, debouncedSearch, getEventsPage, prefetchAdjacentPages],
   );
+
+  // Fetch whenever page, search, or refresh changes.
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchEvents(controller.signal, refreshKey > 0);
+
+    return () => controller.abort();
+  }, [fetchEvents, refreshKey]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -92,14 +211,6 @@ export default function EventsManager() {
   useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearch]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    fetchEvents(controller.signal);
-
-    return () => controller.abort();
-  }, [fetchEvents, refreshKey]);
 
   const handleCreate = () => {
     setSelectedEvent(null);

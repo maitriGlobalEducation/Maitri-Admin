@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { Scholarship } from "@/types/scholarship";
 
@@ -46,35 +46,150 @@ export default function ScholarshipsManager() {
     setCurrentPage(1);
   }, [debouncedSearch]);
 
+  type ScholarshipPageData = {
+    scholarships: typeof scholarships;
+    totalScholarships: number;
+    totalPages: number;
+  };
+
+  const pageCache = useRef(new Map<string, ScholarshipPageData>());
+
+  const requestControllers = useRef(new Map<string, AbortController>());
+
+  const getCacheKey = (page: number, search: string) =>
+    `${search.trim().toLowerCase()}-${page}`;
+
+  // Fetch a page from the API.
+  const getScholarshipsPage = useCallback(
+    async (
+      page: number,
+      search: string,
+      signal?: AbortSignal,
+    ): Promise<ScholarshipPageData> => {
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(ITEMS_PER_PAGE),
+      });
+
+      if (search) {
+        params.set("search", search);
+      }
+
+      const response = await fetch(
+        `/api/cms/scholarships?${params.toString()}`,
+        {
+          signal,
+        },
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.message ?? "Failed to fetch scholarships");
+      }
+
+      return {
+        scholarships: result.data,
+        totalScholarships: result.pagination.total,
+        totalPages: Math.max(1, result.pagination.totalPages),
+      };
+    },
+    [],
+  );
+
+  // Prefetch a page in the background.
+  const prefetchPage = useCallback(
+    async (page: number, search: string) => {
+      if (page < 1) return;
+
+      const key = getCacheKey(page, search);
+
+      if (pageCache.current.has(key) || requestControllers.current.has(key)) {
+        return;
+      }
+
+      const controller = new AbortController();
+
+      requestControllers.current.set(key, controller);
+
+      try {
+        const result = await getScholarshipsPage(
+          page,
+          search,
+          controller.signal,
+        );
+
+        pageCache.current.set(key, result);
+      } catch (error) {
+        if (!(error instanceof Error && error.name === "AbortError")) {
+          console.error("Scholarship prefetch failed:", error);
+        }
+      } finally {
+        if (requestControllers.current.get(key) === controller) {
+          requestControllers.current.delete(key);
+        }
+      }
+    },
+    [getScholarshipsPage],
+  );
+
+  // Prefetch neighboring pages.
+  const prefetchAdjacentPages = useCallback(
+    (page: number, search: string, totalPages: number) => {
+      if (page > 1) {
+        void prefetchPage(page - 1, search);
+      }
+
+      if (page < totalPages) {
+        void prefetchPage(page + 1, search);
+      }
+    },
+    [prefetchPage],
+  );
+
+  // Main fetch function.
   const fetchScholarships = useCallback(
-    async (signal?: AbortSignal) => {
+    async (signal?: AbortSignal, forceRefresh = false) => {
+      const key = getCacheKey(currentPage, debouncedSearch);
+
+      if (forceRefresh) {
+        pageCache.current.delete(key);
+      }
+
+      // Serve cached results immediately.
+      const cached = pageCache.current.get(key);
+
+      if (cached) {
+        setScholarships(cached.scholarships);
+        setTotalScholarships(cached.totalScholarships);
+        setTotalPages(cached.totalPages);
+        setError("");
+        setIsLoading(false);
+
+        prefetchAdjacentPages(currentPage, debouncedSearch, cached.totalPages);
+
+        return;
+      }
+
       try {
         setIsLoading(true);
         setError("");
 
-        const params = new URLSearchParams({
-          page: String(currentPage),
-          limit: String(ITEMS_PER_PAGE),
-        });
-
-        if (debouncedSearch) {
-          params.set("search", debouncedSearch);
-        }
-
-        const response = await fetch(
-          `/api/cms/scholarships?${params.toString()}`,
-          { signal },
+        const result = await getScholarshipsPage(
+          currentPage,
+          debouncedSearch,
+          signal,
         );
 
-        const result = await response.json();
+        if (signal?.aborted) return;
 
-        if (!response.ok || !result.success) {
-          throw new Error(result.message ?? "Failed to fetch scholarships");
-        }
+        pageCache.current.set(key, result);
 
-        setScholarships(result.data);
-        setTotalScholarships(result.pagination.total);
-        setTotalPages(Math.max(1, result.pagination.totalPages));
+        setScholarships(result.scholarships);
+        setTotalScholarships(result.totalScholarships);
+        setTotalPages(result.totalPages);
+
+        prefetchAdjacentPages(currentPage, debouncedSearch, result.totalPages);
       } catch (error) {
         if (error instanceof Error && error.name === "AbortError") {
           return;
@@ -95,13 +210,14 @@ export default function ScholarshipsManager() {
         }
       }
     },
-    [currentPage, debouncedSearch],
+    [currentPage, debouncedSearch, getScholarshipsPage, prefetchAdjacentPages],
   );
 
   useEffect(() => {
     const controller = new AbortController();
 
-    fetchScholarships(controller.signal);
+    // Refresh requests should bypass the cache.
+    fetchScholarships(controller.signal, refreshKey > 0);
 
     return () => controller.abort();
   }, [fetchScholarships, refreshKey]);

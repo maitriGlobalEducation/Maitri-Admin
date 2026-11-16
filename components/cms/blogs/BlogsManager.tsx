@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
 import BlogForm from "./BlogForm";
@@ -38,41 +38,164 @@ export default function BlogsManager() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
-  const fetchBlogs = async (page: number, search = debouncedSearch) => {
-    try {
-      setPageLoading(true);
+  // Inside your component
 
-      const params = new URLSearchParams({
-        page: String(page),
-        limit: String(PAGE_SIZE),
-      });
-
-      if (search) {
-        params.set("search", search);
-      }
-
-      const response = await fetch(`/api/cms/blogs?${params.toString()}`);
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        setBlogs(result.data);
-        setTotalPages(result.pagination.totalPages);
-        setTotalBlogs(result.pagination.total);
-      }
-    } catch (error) {
-      console.error("Failed to fetch blogs:", error);
-    } finally {
-      setPageLoading(false);
-    }
+  type BlogPageData = {
+    blogs: typeof blogs;
+    totalPages: number;
+    totalBlogs: number;
   };
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearch]);
+  const pageCache = useRef(new Map<string, BlogPageData>());
+
+  const pendingRequests = useRef(new Map<string, Promise<BlogPageData>>());
+
+  // Generate a unique key for each page and search combination.
+  const getCacheKey = (page: number, search: string) =>
+    `${search.trim().toLowerCase()}-${page}`;
+
+  // Shared API request handler (prevents duplicate requests).
+  const getBlogsPage = useCallback(
+    async (page: number, search: string): Promise<BlogPageData> => {
+      const key = getCacheKey(page, search);
+
+      const existingRequest = pendingRequests.current.get(key);
+
+      if (existingRequest) {
+        return existingRequest;
+      }
+
+      const request = (async () => {
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: String(PAGE_SIZE),
+        });
+
+        if (search) {
+          params.set("search", search);
+        }
+
+        const response = await fetch(`/api/cms/blogs?${params.toString()}`);
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.message || "Failed to fetch blogs.");
+        }
+
+        return {
+          blogs: result.data,
+          totalPages: result.pagination.totalPages,
+          totalBlogs: result.pagination.total,
+        };
+      })();
+
+      pendingRequests.current.set(key, request);
+
+      try {
+        return await request;
+      } finally {
+        pendingRequests.current.delete(key);
+      }
+    },
+    [],
+  );
+
+  // Prefetch a page without updating the UI.
+  const prefetchPage = useCallback(
+    async (page: number, search: string) => {
+      if (page < 1) return;
+
+      const key = getCacheKey(page, search);
+
+      if (pageCache.current.has(key) || pendingRequests.current.has(key)) {
+        return;
+      }
+
+      try {
+        const result = await getBlogsPage(page, search);
+
+        pageCache.current.set(key, result);
+      } catch (error) {
+        console.error("Blog prefetch failed:", error);
+      }
+    },
+    [getBlogsPage],
+  );
+
+  // Prepare both neighboring pages.
+  const prefetchAdjacentPages = useCallback(
+    (page: number, search: string, totalPages: number) => {
+      if (page > 1) {
+        void prefetchPage(page - 1, search);
+      }
+
+      if (page < totalPages) {
+        void prefetchPage(page + 1, search);
+      }
+    },
+    [prefetchPage],
+  );
+
+  // Main pagination function.
+  const fetchBlogs = useCallback(
+    async (page: number, search = debouncedSearch) => {
+      const key = getCacheKey(page, search);
+
+      // 1. Serve cached data immediately.
+      const cached = pageCache.current.get(key);
+
+      if (cached) {
+        setBlogs(cached.blogs);
+        setTotalPages(cached.totalPages);
+        setTotalBlogs(cached.totalBlogs);
+        setCurrentPage(page);
+        setPageLoading(false);
+
+        prefetchAdjacentPages(page, search, cached.totalPages);
+
+        return;
+      }
+
+      // 2. Fetch from API if not cached.
+      try {
+        setPageLoading(true);
+
+        const result = await getBlogsPage(page, search);
+
+        pageCache.current.set(key, result);
+
+        setBlogs(result.blogs);
+        setTotalPages(result.totalPages);
+        setTotalBlogs(result.totalBlogs);
+        setCurrentPage(page);
+
+        // 3. Prepare previous and next pages.
+        prefetchAdjacentPages(page, search, result.totalPages);
+      } catch (error) {
+        console.error("Failed to fetch blogs:", error);
+      } finally {
+        setPageLoading(false);
+      }
+    },
+    [debouncedSearch, getBlogsPage, prefetchAdjacentPages],
+  );
+
+  // Handle search changes and pagination.
+  const previousSearch = useRef(debouncedSearch);
 
   useEffect(() => {
-    fetchBlogs(currentPage, debouncedSearch);
-  }, [currentPage, debouncedSearch]);
+    if (previousSearch.current !== debouncedSearch) {
+      previousSearch.current = debouncedSearch;
+
+      if (currentPage !== 1) {
+        setCurrentPage(1);
+        return;
+      }
+    }
+
+    void fetchBlogs(currentPage, debouncedSearch);
+  }, [currentPage, debouncedSearch, fetchBlogs]);
 
   const handleEditBlog = (blog: Blog) => {
     setSelectedBlog(blog);
