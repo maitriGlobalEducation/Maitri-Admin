@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
 
 import ScholarshipApplicationFormBuilder from "./ScholarshipApplicationFormBuilder";
-import BlogEditor from "@/components/cms/blogs/BlogEditor";
+import TextEditor from "@/components/Common Components/TextEditor";
 
 import type {
   Scholarship,
@@ -536,7 +536,7 @@ export default function ScholarshipForm({
           </div>
 
           <div className="overflow-hidden rounded-xl border border-zinc-200">
-            <BlogEditor
+            <TextEditor
               content={formData.content}
               onChange={(content) =>
                 setFormData((current) => ({

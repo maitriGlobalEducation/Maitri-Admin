@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Search, X, Trash2, Pencil, RefreshCw } from "lucide-react";
 import { toast } from "react-toastify";
 
 import { SelectOption } from "@/components/cms/explore/SearchableMultiSelect";
@@ -22,15 +21,13 @@ import {
   getCoursesPage,
   type CoursePage,
 } from "@/services/explore-courses.service";
-import { statusDotStyles, statusStyles } from "@/lib/styles/publishStatusStyle";
 import { formatDate } from "@/helpers/date";
 import CourseForm from "./CoursesForm";
 import StatusSwitch, {
   StatusType,
 } from "@/components/Common Components/StatusSwitch";
-import DataTable, {
-  DataTableColumn,
-} from "@/components/Common Components/DataTable";
+import DataTable from "@/components/Common Components/DataTable";
+import { DataTableColumn } from "@/types/dataTable";
 
 type CourseScholarshipReference = {
   scholarshipId: string;
@@ -125,7 +122,7 @@ export default function CoursesManager() {
   const [courses, setCourses] = useState<CourseRecord[]>([]);
   const [form, setForm] = useState<CourseForm>(emptyForm);
   const [scholarships, setScholarships] = useState<ScholarshipOption[]>([]);
-  // console.log({ scholarships });
+
   const [feeCurrency, setFeeCurrency] = useState("USD");
 
   const [categories, setCategories] = useState<ReferenceOption[]>([]);

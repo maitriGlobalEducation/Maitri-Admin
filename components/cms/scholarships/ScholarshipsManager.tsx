@@ -1,19 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
 
 import type { Scholarship } from "@/types/scholarship";
 
 import ScholarshipForm from "./ScholarshipForm";
 import { toast } from "react-toastify";
-import { statusDotStyles, statusStyles } from "@/lib/styles/publishStatusStyle";
 import StatusSwitch, {
   StatusType,
 } from "@/components/Common Components/StatusSwitch";
-import DataTable, {
-  DataTableColumn,
-} from "@/components/Common Components/DataTable";
+import DataTable from "@/components/Common Components/DataTable";
+import { DataTableColumn } from "@/types/dataTable";
 
 export default function ScholarshipsManager() {
   const ITEMS_PER_PAGE = 10;

@@ -27,7 +27,7 @@ import type { ChangeEvent } from "react";
 import { uploadImage } from "@/services/media.service";
 import { NodeSelection } from "@tiptap/pm/state";
 
-interface BlogEditorProps {
+interface TextEditorProps {
   content?: Record<string, unknown>;
   onChange: (content: Record<string, unknown>) => void;
 }
@@ -49,7 +49,7 @@ function isValidTiptapDocument(
   return document.type === "doc" && Array.isArray(document.content);
 }
 
-export default function BlogEditor({ content, onChange }: BlogEditorProps) {
+export default function TextEditor({ content, onChange }: TextEditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit,

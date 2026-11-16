@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import BlogEditor from "./BlogEditor";
 import { Blog, BlogStatus } from "@/types/blog";
 import BlogImageUploader from "./BlogImageUploader";
 import type { UploadedMedia } from "@/services/media.service";
 import { toast } from "react-toastify";
 import { Star } from "lucide-react";
+import TextEditor from "@/components/Common Components/TextEditor";
 
 interface BlogFormProps {
   blog: Blog | null;
@@ -430,7 +430,7 @@ export default function BlogForm({ blog, onCancel, onSuccess }: BlogFormProps) {
           title="Blog content"
           description="Format the article exactly how it should appear on the website."
         >
-          <BlogEditor
+          <TextEditor
             content={formData.content}
             onChange={(content) => updateField("content", content)}
           />

@@ -1,20 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CalendarDays, Edit, Pencil, Plus, Trash2 } from "lucide-react";
+import { CalendarDays, Plus } from "lucide-react";
 import { toast } from "react-toastify";
 
 import type { Event } from "@/types/event";
-import { getEvents } from "@/services/event.service";
 import EventForm from "./EventForm";
-import { statusDotStyles, statusStyles } from "@/lib/styles/publishStatusStyle";
 import StatusSwitch, {
   StatusType,
 } from "@/components/Common Components/StatusSwitch";
 import { formatDate } from "@/helpers/date";
-import DataTable, {
-  DataTableColumn,
-} from "@/components/Common Components/DataTable";
+import DataTable from "@/components/Common Components/DataTable";
+import { DataTableColumn } from "@/types/dataTable";
 
 export default function EventsManager() {
   const ITEMS_PER_PAGE = 10;

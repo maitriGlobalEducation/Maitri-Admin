@@ -15,6 +15,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
     setError("");
     setIsLoading(true);
 
@@ -31,14 +32,13 @@ export default function LoginPage() {
 
       if (!response.ok) {
         setError(data.message || "Unable to sign in.");
+        setIsLoading(false);
         return;
       }
 
       router.replace("/");
-      router.refresh();
     } catch {
       setError("Something went wrong. Please try again.");
-    } finally {
       setIsLoading(false);
     }
   };

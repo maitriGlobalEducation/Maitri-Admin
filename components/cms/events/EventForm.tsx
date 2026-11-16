@@ -10,7 +10,7 @@ import EventRegistrationFormBuilder, {
   defaultFields,
 } from "./EventRegistrationFormBuilder";
 
-import BlogEditor from "@/components/cms/blogs/BlogEditor";
+import TextEditor from "@/components/Common Components/TextEditor";
 import { EVENT_TIMEZONES } from "@/lib/event-time";
 import TimezoneSelect from "@/components/Common Components/TimezoneSelect";
 
@@ -590,7 +590,7 @@ export default function EventForm({
           </div>
 
           <div className="overflow-hidden rounded-xl border border-zinc-200">
-            <BlogEditor
+            <TextEditor
               content={formData.content}
               onChange={(content) =>
                 setFormData((current) => ({

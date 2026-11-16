@@ -1,19 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 
 import BlogForm from "./BlogForm";
 import { Blog } from "@/types/blog";
-import { statusDotStyles, statusStyles } from "@/lib/styles/publishStatusStyle";
 import StatusSwitch, {
   StatusType,
 } from "@/components/Common Components/StatusSwitch";
-import DataTable, {
-  DataTableColumn,
-} from "@/components/Common Components/DataTable";
+import DataTable from "@/components/Common Components/DataTable";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
+import { DataTableColumn } from "@/types/dataTable";
 
 export default function BlogsManager() {
   const [blogs, setBlogs] = useState<Blog[]>([]);

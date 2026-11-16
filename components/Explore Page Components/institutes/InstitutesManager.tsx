@@ -9,24 +9,21 @@ import {
 import SearchableMultiSelect, {
   SelectOption,
 } from "@/components/cms/explore/SearchableMultiSelect";
-import BlogEditor from "@/components/cms/blogs/BlogEditor";
+import TextEditor from "@/components/Common Components/TextEditor";
 import MediaUploader from "@/components/cms/MediaUploader";
 import { toast } from "react-toastify";
 import ConfirmDeleteModal from "@/components/common/ConfirmDeleteModal";
-import { Pencil, RefreshCw, Search, Trash2, X } from "lucide-react";
 import {
   ExploreInstitute,
   ExploreInstituteInput,
   ExploreInstituteStatus,
 } from "@/types/explore-institute";
-import { statusDotStyles, statusStyles } from "@/lib/styles/publishStatusStyle";
 import { formatDate } from "@/helpers/date";
 import StatusSwitch, {
   StatusType,
 } from "@/components/Common Components/StatusSwitch";
-import DataTable, {
-  DataTableColumn,
-} from "@/components/Common Components/DataTable";
+import DataTable from "@/components/Common Components/DataTable";
+import { DataTableColumn } from "@/types/dataTable";
 
 type InstituteForm = Omit<ExploreInstituteInput, "campuses"> & {
   areas: string[];
@@ -170,6 +167,20 @@ export default function InstitutesManager() {
     }
   }, []);
 
+  // Prefetch both previous and next pages.
+  const prefetchAdjacentPages = useCallback(
+    (page: number, search: string, pagination: InstitutePage["pagination"]) => {
+      if (pagination.hasPreviousPage) {
+        void prefetchPage(page - 1, search);
+      }
+
+      if (pagination.hasNextPage) {
+        void prefetchPage(page + 1, search);
+      }
+    },
+    [prefetchPage],
+  );
+
   const loadPage = useCallback(
     async (page: number, search: string, forceRefresh = false) => {
       const key = getCacheKey(page, search);
@@ -185,19 +196,21 @@ export default function InstitutesManager() {
         setTotalInstitutes(cached.pagination.total);
         setTotalPages(cached.pagination.totalPages);
         setCurrentPage(page);
+        setError("");
         setLoading(false);
         setPageLoading(false);
 
-        // Prepare the next page in the background.
-        if (cached.pagination.hasNextPage) {
-          void prefetchPage(page + 1, search);
-        }
+        // Keep neighboring pages ready.
+        prefetchAdjacentPages(page, search, cached.pagination);
 
         return;
       }
 
       setPageLoading(true);
-      if (institutes.length === 0) setLoading(true);
+
+      if (institutes.length === 0) {
+        setLoading(true);
+      }
 
       try {
         const result = await getInstitutesPage(page, search);
@@ -210,10 +223,8 @@ export default function InstitutesManager() {
         setCurrentPage(page);
         setError("");
 
-        // Prefetch the next page without blocking the current page.
-        if (result.pagination.hasNextPage) {
-          void prefetchPage(page + 1, search);
-        }
+        // Prepare previous and next pages in the background.
+        prefetchAdjacentPages(page, search, result.pagination);
       } catch (error) {
         setError(
           error instanceof Error ? error.message : "Failed to load institutes.",
@@ -223,7 +234,7 @@ export default function InstitutesManager() {
         setPageLoading(false);
       }
     },
-    [prefetchPage, institutes.length],
+    [prefetchAdjacentPages, institutes.length],
   );
 
   useEffect(() => {
@@ -805,7 +816,7 @@ export default function InstitutesManager() {
               <span className="text-red-500 italic">(required*)</span>
             </label>
 
-            <BlogEditor
+            <TextEditor
               content={form.content}
               onChange={(content) => updateField("content", content)}
             />

@@ -5,7 +5,7 @@ import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import SearchableMultiSelect, {
   SelectOption,
 } from "@/components/cms/explore/SearchableMultiSelect";
-import BlogEditor from "@/components/cms/blogs/BlogEditor";
+import TextEditor from "@/components/Common Components/TextEditor";
 import {
   CourseCampusOfferingInput,
   ExploreCourseInput,
@@ -499,7 +499,7 @@ export default function CourseForm({
           <span className="text-red-500 italic">(required*)</span>
         </h3>
 
-        <BlogEditor
+        <TextEditor
           content={form.description}
           onChange={(content: Record<string, unknown>) =>
             updateField("description", content)
