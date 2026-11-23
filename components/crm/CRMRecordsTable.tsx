@@ -36,6 +36,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import LeadAssignmentControl from "@/components/crm/LeadAssignmentControl";
+import { formatDateTime } from "@/helpers/date";
 
 export interface CRMRecord {
   id: string;
@@ -143,6 +144,13 @@ export default function CRMRecordsTable({
   filters,
   canAssignLeads = false,
 }: CRMRecordsTableProps) {
+  const [timezone, setTimezone] = useState("UTC");
+
+  useEffect(() => {
+    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    setTimezone(userTimezone);
+  }, []);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -544,6 +552,8 @@ export default function CRMRecordsTable({
                               >
                                 {getLeadTypeLabel(record)}
                               </span>
+                            ) : column.key === "date" ? (
+                              formatDateTime(record.date, timezone)
                             ) : column.render ? (
                               column.render(record)
                             ) : (
@@ -604,7 +614,7 @@ export default function CRMRecordsTable({
 
                                 <div className="flex items-center gap-2 text-xs text-zinc-500">
                                   <CalendarDays size={14} />
-                                  {record.date}
+                                  {formatDateTime(record.date, timezone)}
                                 </div>
                               </div>
 
@@ -640,7 +650,10 @@ export default function CRMRecordsTable({
                                       </div>
 
                                       <p className="mt-2 whitespace-pre-wrap wrap-break-word text-sm leading-6 text-zinc-800">
-                                        {item.value || "—"}
+                                        {item.label.toLowerCase() ===
+                                        "submitted at"
+                                          ? formatDateTime(item.value, timezone)
+                                          : item.value || "—"}
                                       </p>
                                     </div>
                                   );

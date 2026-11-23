@@ -18,12 +18,12 @@ import {
   ExploreInstituteInput,
   ExploreInstituteStatus,
 } from "@/types/explore-institute";
-import { formatDate } from "@/helpers/date";
 import StatusSwitch, {
   StatusType,
 } from "@/components/Common Components/StatusSwitch";
 import DataTable from "@/components/Common Components/DataTable";
 import { DataTableColumn } from "@/types/dataTable";
+import { formatDateTime } from "@/helpers/date";
 
 type InstituteForm = Omit<ExploreInstituteInput, "campuses"> & {
   areas: string[];
@@ -89,6 +89,14 @@ function getReferenceNames(records: (string | SelectOption)[] = []): string[] {
 }
 
 export default function InstitutesManager() {
+  const [timezone, setTimezone] = useState("UTC");
+
+  useEffect(() => {
+    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    setTimezone(userTimezone);
+  }, []);
+
   const [institutes, setInstitutes] = useState<InstituteRecord[]>([]);
 
   const [areas, setAreas] = useState<SelectOption[]>([]);
@@ -98,7 +106,6 @@ export default function InstitutesManager() {
   );
 
   const [form, setForm] = useState<InstituteForm>(emptyForm);
-  console.log({ form });
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -604,7 +611,7 @@ export default function InstitutesManager() {
             {institute.name}
           </p>
           <p className="mt-1 truncate text-zinc-500">
-            {formatDate(institute.createdAt)}
+            {formatDateTime(institute.createdAt, timezone)}
           </p>
         </div>
       ),

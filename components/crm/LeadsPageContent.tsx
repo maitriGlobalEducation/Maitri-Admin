@@ -1,6 +1,5 @@
 import CRMRecordsTable from "@/components/crm/CRMRecordsTable";
 import type { CRMColumn } from "@/components/crm/CRMRecordsTable";
-import { formatDate } from "@/helpers/date";
 import { formatValue, toCRMRecord } from "@/lib/crm/format-record";
 import { connectDB } from "@/lib/mongodb";
 import { getAuthenticatedAdmin } from "@/lib/auth";
@@ -238,7 +237,7 @@ export default async function LeadsPageContent({ mode, searchParams }: Props) {
       },
       {
         label: "Submitted at",
-        value: formatDate(lead.createdAt),
+        value: lead.createdAt.toISOString(),
       },
     ];
 
@@ -280,6 +279,7 @@ export default async function LeadsPageContent({ mode, searchParams }: Props) {
         lead.createdAt,
         details,
       ),
+      date: lead.createdAt.toISOString(),
       type: lead.type,
       email: String(lead.email ?? "—"),
       mobile: String(lead.mobile ?? "—"),

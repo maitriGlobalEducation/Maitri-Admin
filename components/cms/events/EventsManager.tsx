@@ -9,11 +9,19 @@ import EventForm from "./EventForm";
 import StatusSwitch, {
   StatusType,
 } from "@/components/Common Components/StatusSwitch";
-import { formatDate } from "@/helpers/date";
 import DataTable from "@/components/Common Components/DataTable";
 import { DataTableColumn } from "@/types/dataTable";
+import { formatDateTime } from "@/helpers/date";
 
 export default function EventsManager() {
+  const [timezone, setTimezone] = useState("UTC");
+
+  useEffect(() => {
+    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    setTimezone(userTimezone);
+  }, []);
+
   const ITEMS_PER_PAGE = 10;
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -357,7 +365,7 @@ export default function EventsManager() {
       key: "date",
       header: "Date",
       cellClassName: "whitespace-nowrap text-zinc-600",
-      render: (event) => formatDate(event.eventDate),
+      render: (event) => formatDateTime(event.eventDate, timezone),
     },
     {
       key: "time",

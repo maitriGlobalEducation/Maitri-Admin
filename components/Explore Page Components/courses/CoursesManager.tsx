@@ -21,13 +21,13 @@ import {
   getCoursesPage,
   type CoursePage,
 } from "@/services/explore-courses.service";
-import { formatDate } from "@/helpers/date";
 import CourseForm from "./CoursesForm";
 import StatusSwitch, {
   StatusType,
 } from "@/components/Common Components/StatusSwitch";
 import DataTable from "@/components/Common Components/DataTable";
 import { DataTableColumn } from "@/types/dataTable";
+import { formatDateTime } from "@/helpers/date";
 
 type CourseScholarshipReference = {
   scholarshipId: string;
@@ -119,6 +119,13 @@ function getErrorMessage(result: any, fallback: string) {
 }
 
 export default function CoursesManager() {
+  const [timezone, setTimezone] = useState("UTC");
+
+  useEffect(() => {
+    const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    setTimezone(userTimezone);
+  }, []);
   const [courses, setCourses] = useState<CourseRecord[]>([]);
   const [form, setForm] = useState<CourseForm>(emptyForm);
   const [scholarships, setScholarships] = useState<ScholarshipOption[]>([]);
@@ -702,7 +709,7 @@ export default function CoursesManager() {
         <div className="min-w-0">
           <p className="text-xs font-semibold text-zinc-900">{course.name}</p>
           <p className="mt-1 text-xs text-zinc-500">
-            {formatDate(course.createdAt)}
+            {formatDateTime(course.createdAt, timezone)}
           </p>
         </div>
       ),

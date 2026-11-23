@@ -1,14 +1,16 @@
-export function formatDate(date: string | Date): string {
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+export const formatDateTime = (value: string, timezone: string) => {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "—";
 
   const formatted = new Intl.DateTimeFormat("en-IN", {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: timezone,
-  }).format(new Date(date));
+  }).format(date);
 
   return `${formatted} (${timezone})`;
-}
+};
 
 export function getDashboardDateRanges() {
   const now = new Date();
