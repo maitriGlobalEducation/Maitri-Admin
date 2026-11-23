@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import ContactSubmission from "@/models/ContactSubmission";
-import EventRegistration from "@/models/EventRegistration";
-import ScholarshipApplication from "@/models/ScholarshipApplication";
+import mongoose from "mongoose";
+
 import { connectDB } from "@/lib/mongodb";
+import { getAuthenticatedAdmin } from "@/lib/auth";
+import Lead from "@/models/Lead";
+import { hasPermission } from "@/lib/permissions";
 
 type DateRanges = {
   todayStart: Date;
@@ -22,55 +24,8 @@ type RecentLead = {
   createdAt: Date;
 };
 
-// Finds a value in dynamic form fields using possible field names.
-function getFieldValue(
-  fields: Record<string, unknown> = {},
-  possibleNames: string[],
-): string {
-  const normalizedFields = Object.entries(fields).reduce(
-    (result, [key, value]) => {
-      result[key.toLowerCase().replace(/[^a-z0-9]/g, "")] = value;
-      return result;
-    },
-    {} as Record<string, unknown>,
-  );
-
-  for (const name of possibleNames) {
-    const value =
-      normalizedFields[name.toLowerCase().replace(/[^a-z0-9]/g, "")];
-
-    if (typeof value === "string" && value.trim()) {
-      return value.trim();
-    }
-  }
-
-  return "";
-}
-
-function getFullName(fields: Record<string, unknown> = {}): string {
-  const fullName = getFieldValue(fields, [
-    "fullName",
-    "name",
-    "yourName",
-    "applicantName",
-  ]);
-
-  if (fullName) return fullName;
-
-  const firstName = getFieldValue(fields, [
-    "firstName",
-    "first_name",
-    "firstname",
-  ]);
-
-  const lastName = getFieldValue(fields, ["lastName", "last_name", "lastname"]);
-
-  return `${firstName} ${lastName}`.trim() || "Unknown";
-}
-
 function getDateRanges(searchParams: URLSearchParams): DateRanges | null {
   const keys = ["todayStart", "tomorrowStart", "weekStart", "now"] as const;
-
   const dates = {} as Record<(typeof keys)[number], Date>;
 
   for (const key of keys) {
@@ -85,12 +40,37 @@ function getDateRanges(searchParams: URLSearchParams): DateRanges | null {
     dates[key] = date;
   }
 
+  if (
+    dates.todayStart >= dates.tomorrowStart ||
+    dates.weekStart >= dates.now ||
+    dates.todayStart > dates.now
+  ) {
+    return null;
+  }
+
   return dates as DateRanges;
 }
 
 export async function GET(request: NextRequest) {
   try {
-    await connectDB();
+    const currentAdmin = await getAuthenticatedAdmin();
+
+    if (!currentAdmin) {
+      return NextResponse.json(
+        { success: false, message: "Unauthorized." },
+        { status: 401 },
+      );
+    }
+
+    if (!hasPermission(currentAdmin.role, "crm:access")) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "You do not have permission to access CRM.",
+        },
+        { status: 403 },
+      );
+    }
 
     const searchParams = request.nextUrl.searchParams;
     const ranges = getDateRanges(searchParams);
@@ -106,7 +86,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    await connectDB();
+
     const { todayStart, tomorrowStart, weekStart, now } = ranges;
+
+    // Counsellors can only see leads assigned to themselves.
+    // Managers and super admins can see all leads.
+    const accessFilter =
+      currentAdmin.role === "COUNSELLOR"
+        ? {
+            assignedTo: new mongoose.Types.ObjectId(currentAdmin.id),
+          }
+        : {};
 
     const todayFilter = {
       createdAt: {
@@ -122,104 +113,83 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    // Fetch counts and recent submissions in parallel.
     const [
+      totalLeads,
+      todayLeads,
+      weekLeads,
       totalContacts,
-      totalEventRegistrations,
-      totalScholarshipApplications,
-
+      totalEvents,
+      totalScholarships,
       todayContacts,
-      todayEventRegistrations,
-      todayScholarshipApplications,
-
+      todayEvents,
+      todayScholarships,
       weekContacts,
-      weekEventRegistrations,
-      weekScholarshipApplications,
-
-      recentContacts,
-      recentEvents,
-      recentScholarships,
+      weekEvents,
+      weekScholarships,
+      recentDocuments,
     ] = await Promise.all([
-      ContactSubmission.countDocuments(),
-      EventRegistration.countDocuments(),
-      ScholarshipApplication.countDocuments(),
+      Lead.countDocuments(accessFilter),
+      Lead.countDocuments({ ...accessFilter, ...todayFilter }),
+      Lead.countDocuments({ ...accessFilter, ...weekFilter }),
 
-      ContactSubmission.countDocuments(todayFilter),
-      EventRegistration.countDocuments(todayFilter),
-      ScholarshipApplication.countDocuments(todayFilter),
+      Lead.countDocuments({ ...accessFilter, type: "contact" }),
+      Lead.countDocuments({ ...accessFilter, type: "event" }),
+      Lead.countDocuments({ ...accessFilter, type: "scholarship" }),
 
-      ContactSubmission.countDocuments(weekFilter),
-      EventRegistration.countDocuments(weekFilter),
-      ScholarshipApplication.countDocuments(weekFilter),
+      Lead.countDocuments({
+        ...accessFilter,
+        type: "contact",
+        ...todayFilter,
+      }),
+      Lead.countDocuments({
+        ...accessFilter,
+        type: "event",
+        ...todayFilter,
+      }),
+      Lead.countDocuments({
+        ...accessFilter,
+        type: "scholarship",
+        ...todayFilter,
+      }),
 
-      ContactSubmission.find().sort({ createdAt: -1 }).limit(10).lean(),
+      Lead.countDocuments({
+        ...accessFilter,
+        type: "contact",
+        ...weekFilter,
+      }),
+      Lead.countDocuments({
+        ...accessFilter,
+        type: "event",
+        ...weekFilter,
+      }),
+      Lead.countDocuments({
+        ...accessFilter,
+        type: "scholarship",
+        ...weekFilter,
+      }),
 
-      EventRegistration.find().sort({ createdAt: -1 }).limit(10).lean(),
-
-      ScholarshipApplication.find().sort({ createdAt: -1 }).limit(10).lean(),
+      Lead.find(accessFilter)
+        .sort({ createdAt: -1, _id: -1 })
+        .limit(10)
+        .select("firstName lastName email type sourceTitle createdAt")
+        .lean(),
     ]);
 
-    const totalLeads =
-      totalContacts + totalEventRegistrations + totalScholarshipApplications;
-
-    const todayLeads =
-      todayContacts + todayEventRegistrations + todayScholarshipApplications;
-
-    const weekLeads =
-      weekContacts + weekEventRegistrations + weekScholarshipApplications;
-
-    // Normalize all submission types into one structure.
-    const contactLeads: RecentLead[] = recentContacts.map((contact) => ({
-      _id: contact._id.toString(),
-      name: `${contact.firstName} ${contact.lastName}`.trim() || "Unknown",
-      email: contact.email || "",
-      type: "contact",
-      title: "Contact enquiry",
-      createdAt: contact.createdAt,
+    const recentLeads: RecentLead[] = recentDocuments.map((lead) => ({
+      _id: lead._id.toString(),
+      name:
+        `${lead.firstName ?? ""} ${lead.lastName ?? ""}`.trim() || "Unknown",
+      email: lead.email || "",
+      type: lead.type,
+      title:
+        lead.type === "contact"
+          ? "Contact enquiry"
+          : lead.sourceTitle ||
+            (lead.type === "event"
+              ? "Event registration"
+              : "Scholarship application"),
+      createdAt: lead.createdAt,
     }));
-
-    const eventLeads: RecentLead[] = recentEvents.map((registration) => {
-      const fields = (registration.fields || {}) as Record<string, unknown>;
-
-      return {
-        _id: registration._id.toString(),
-        name: getFullName(fields),
-        email: getFieldValue(fields, [
-          "email",
-          "emailAddress",
-          "email_address",
-        ]),
-        type: "event",
-        title: registration.eventTitle,
-        createdAt: registration.createdAt,
-      };
-    });
-
-    const scholarshipLeads: RecentLead[] = recentScholarships.map(
-      (application) => {
-        const fields = (application.fields || {}) as Record<string, unknown>;
-
-        return {
-          _id: application._id.toString(),
-          name: getFullName(fields),
-          email: getFieldValue(fields, [
-            "email",
-            "emailAddress",
-            "email_address",
-          ]),
-          type: "scholarship",
-          title: application.scholarshipTitle,
-          createdAt: application.createdAt,
-        };
-      },
-    );
-
-    const recentLeads = [...contactLeads, ...eventLeads, ...scholarshipLeads]
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      )
-      .slice(0, 10);
 
     return NextResponse.json({
       success: true,
@@ -231,8 +201,8 @@ export async function GET(request: NextRequest) {
         weekLeads,
 
         contacts: totalContacts,
-        eventRegistrations: totalEventRegistrations,
-        scholarshipApplications: totalScholarshipApplications,
+        eventRegistrations: totalEvents,
+        scholarshipApplications: totalScholarships,
 
         breakdown: {
           contacts: {
@@ -241,14 +211,14 @@ export async function GET(request: NextRequest) {
             thisWeek: weekContacts,
           },
           eventRegistrations: {
-            total: totalEventRegistrations,
-            today: todayEventRegistrations,
-            thisWeek: weekEventRegistrations,
+            total: totalEvents,
+            today: todayEvents,
+            thisWeek: weekEvents,
           },
           scholarshipApplications: {
-            total: totalScholarshipApplications,
-            today: todayScholarshipApplications,
-            thisWeek: weekScholarshipApplications,
+            total: totalScholarships,
+            today: todayScholarships,
+            thisWeek: weekScholarships,
           },
         },
 

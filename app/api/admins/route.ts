@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 
 const roles: AdminRole[] = ["COUNSELLOR", "EDITOR", "MANAGER", "SUPER_ADMIN"];
 
-async function requireSuperAdmin() {
+async function requireSuperAdminOrManager() {
   const current = await getAuthenticatedAdmin();
 
   if (!current) {
@@ -21,11 +21,11 @@ async function requireSuperAdmin() {
     };
   }
 
-  if (current.role !== "SUPER_ADMIN") {
+  if (current.role !== "SUPER_ADMIN" && current.role !== "MANAGER") {
     return {
       admin: null,
       response: NextResponse.json(
-        { message: "Super Admin access required." },
+        { message: "Super Admin or Manager access required." },
         { status: 403 },
       ),
     };
@@ -36,7 +36,7 @@ async function requireSuperAdmin() {
 
 export async function GET() {
   try {
-    const auth = await requireSuperAdmin();
+    const auth = await requireSuperAdminOrManager();
     if (auth.response) return auth.response;
 
     await connectDB();
@@ -67,7 +67,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const auth = await requireSuperAdmin();
+    const auth = await requireSuperAdminOrManager();
     if (auth.response) return auth.response;
 
     const body: unknown = await request.json();

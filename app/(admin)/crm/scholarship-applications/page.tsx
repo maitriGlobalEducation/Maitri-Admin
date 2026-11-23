@@ -123,6 +123,17 @@ export default async function ScholarshipApplicationsPage() {
       records={records}
       columns={columns}
       searchPlaceholder="Search scholarship, applicant, or email..."
+      totalRecords={records.length}
+      currentPage={1}
+      totalPages={1}
+      pageSize={records.length}
+      filters={{
+        q: "",
+        type: "",
+        status: "",
+        startDate: "",
+        endDate: "",
+      }}
     />
   );
 }

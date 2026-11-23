@@ -86,6 +86,17 @@ export default async function ContactEnquiriesPage() {
       records={records}
       columns={columns}
       searchPlaceholder="Search name, email, or mobile..."
+      totalRecords={records.length}
+      currentPage={1}
+      totalPages={1}
+      pageSize={records.length}
+      filters={{
+        q: "",
+        type: "",
+        status: "",
+        startDate: "",
+        endDate: "",
+      }}
     />
   );
 }

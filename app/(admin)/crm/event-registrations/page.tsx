@@ -121,6 +121,17 @@ export default async function EventRegistrationsPage() {
       records={records}
       columns={columns}
       searchPlaceholder="Search event, registrant, or email..."
+      totalRecords={records.length}
+      currentPage={1}
+      totalPages={1}
+      pageSize={records.length}
+      filters={{
+        q: "",
+        type: "",
+        status: "",
+        startDate: "",
+        endDate: "",
+      }}
     />
   );
 }

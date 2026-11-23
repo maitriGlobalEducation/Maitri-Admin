@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Save } from "lucide-react";
+import { Plus, Save } from "lucide-react";
 import { toast } from "react-toastify";
 import HomepageAboutForm from "./HomepageAboutForm";
 import type { HomepageAboutContent, HomepageSection } from "@/types/homepage";
@@ -414,11 +414,22 @@ export default function HomepageManager() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="sticky top-0 z-20 flex items-center justify-between border-b border-zinc-200 bg-zinc-50/95 py-4 backdrop-blur-sm">
+    <div className="space-y-7">
+      {/* Page Header */}
+      <div className="sticky top-0 z-20 -mx-6 flex items-center justify-between border-b border-[#E9E5DC] bg-[#FBFAF7]/95 px-6 py-5 backdrop-blur-md">
         <div>
-          <h1 className="text-2xl font-semibold text-zinc-900">Homepage CMS</h1>
-          <p className="mt-1 text-sm text-zinc-500">
+          <div className="flex items-center gap-2">
+            <span className="size-1.5 rounded-full bg-[#B99A5D]" />
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#9A8B70]">
+              Content Management
+            </p>
+          </div>
+
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-[#172C3D]">
+            Homepage CMS
+          </h1>
+
+          <p className="mt-1 text-sm text-[#85847D]">
             Manage the homepage content section by section.
           </p>
         </div>
@@ -428,13 +439,15 @@ export default function HomepageManager() {
             type="button"
             onClick={handleSave}
             disabled={isSaving}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-[#172C3D] px-5 py-3 text-sm font-medium text-white shadow-sm transition-all hover:bg-[#243E52] hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Save className="h-4 w-4" />
+            <Save className="h-4 w-4 text-[#D3B77F]" />
             {isSaving ? "Saving..." : "Save Changes"}
           </button>
         )}
       </div>
+
+      {/* Homepage Sections */}
       <div className="space-y-4">
         <HomepageSectionCard
           number="01"
@@ -457,7 +470,6 @@ export default function HomepageManager() {
           onToggle={() =>
             setOpenSection((current) => (current === "hero" ? null : "hero"))
           }
-          // defaultOpen
         >
           <HomepageHeroForm
             hero={homepage.hero}
@@ -545,14 +557,24 @@ export default function HomepageManager() {
         </HomepageSectionCard>
       </div>
 
-      <div className="rounded-xl border border-dashed border-zinc-300 p-6">
-        <h2 className="text-sm font-semibold text-zinc-900">
-          More homepage sections
-        </h2>
-        <p className="mt-1 text-sm text-zinc-500">
-          We'll add the next sections here as we work through the homepage.
-        </p>
-      </div>
+      {/* Upcoming Sections */}
+      {/* <div className="rounded-2xl border border-dashed border-[#DCD3C2] bg-[#F7F4ED]/60 p-7">
+        <div className="flex items-start gap-4">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#F0EBDD] text-[#9B7D43]">
+            <Plus size={19} />
+          </div>
+
+          <div>
+            <h2 className="text-sm font-semibold text-[#172C3D]">
+              More homepage sections
+            </h2>
+            <p className="mt-1 max-w-lg text-sm leading-6 text-[#85847D]">
+              Additional homepage sections will appear here as we expand the
+              content management experience.
+            </p>
+          </div>
+        </div>
+      </div> */}
     </div>
   );
 }

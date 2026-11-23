@@ -12,7 +12,7 @@ import {
   X,
   LoaderCircle,
 } from "lucide-react";
-import { ADMIN_ROLE_OPTIONS } from "@/lib/permissions";
+import { ADMIN_ROLE_OPTIONS, ROLE_STYLES } from "@/lib/permissions";
 import type { AdminRole } from "@/models/Admin";
 
 type AdminAccount = {
@@ -215,18 +215,21 @@ export default function AdminManagementPage() {
   });
 
   return (
-    <main className="min-h-screen bg-zinc-50 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="min-h-screen px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        {/* Header */}
+        <div className="mb-8 flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
           <div>
-            <div className="mb-2 flex items-center gap-2 text-sm text-zinc-500">
-              <ShieldCheck size={16} />
-              Access control
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#E9E1CF] bg-[#F0EBDD] px-3 py-1.5 text-xs font-semibold tracking-wide text-[#80683D]">
+              <ShieldCheck size={15} />
+              ACCESS CONTROL
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-zinc-950">
+
+            <h1 className="text-3xl font-bold tracking-tight text-[#172C3D]">
               Admin management
             </h1>
-            <p className="mt-2 text-sm text-zinc-500">
+
+            <p className="mt-2 text-sm text-[#77766F]">
               Manage CMS and CRM accounts, roles, passwords, and access.
             </p>
           </div>
@@ -234,17 +237,18 @@ export default function AdminManagementPage() {
           <button
             type="button"
             onClick={openCreate}
-            className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-700"
+            className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#172C3D] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#243F52]"
           >
             <Plus size={18} />
             Add account
           </button>
         </div>
 
+        {/* Alerts */}
         {error && !dialogOpen && (
           <div
             role="alert"
-            className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            className="mb-5 rounded-xl border border-red-200 bg-[#FFF7F5] px-4 py-3 text-sm text-red-700"
           >
             {error}
           </div>
@@ -253,17 +257,22 @@ export default function AdminManagementPage() {
         {success && (
           <div
             role="status"
-            className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+            className="flex items-center justify-between mb-5 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 font-medium text-sm text-emerald-500"
           >
-            {success}
+            <span>{success}</span>
+            <button className="cursor-pointer" onClick={() => setSuccess("")}>
+              <X size={18} />
+            </button>
           </div>
         )}
 
-        <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-4 border-b border-zinc-200 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+        {/* Accounts Section */}
+        <section className="overflow-hidden rounded-2xl border border-[#E9E5DC] bg-white shadow-[0_2px_12px_rgba(23,44,61,0.04)]">
+          {/* Section Header */}
+          <div className="flex flex-col gap-4 border-b border-[#EEEAE1] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
             <div>
-              <h2 className="font-semibold text-zinc-900">User accounts</h2>
-              <p className="mt-1 text-sm text-zinc-500">
+              <h2 className="font-semibold text-[#172C3D]">User accounts</h2>
+              <p className="mt-1 text-sm text-[#88857D]">
                 {admins.length} total account{admins.length === 1 ? "" : "s"}
               </p>
             </div>
@@ -271,86 +280,100 @@ export default function AdminManagementPage() {
             <div className="relative w-full sm:max-w-xs">
               <Search
                 size={17}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-[#AAA69C]"
               />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search username or role"
-                className="w-full rounded-xl border border-zinc-200 py-2.5 pl-9 pr-3 text-sm outline-none transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-100"
+                className="w-full rounded-xl border border-[#E6E1D7] bg-[#FDFCFA] py-2.5 pl-9 pr-3 text-sm text-[#172C3D] outline-none transition placeholder:text-[#AAA69C] focus:border-[#B9A477] focus:ring-2 focus:ring-[#EDE5D3]"
               />
             </div>
           </div>
 
+          {/* Loading State */}
           {loading ? (
-            <div className="flex min-h-56 items-center justify-center gap-3 text-sm text-zinc-500">
-              <LoaderCircle size={20} className="animate-spin" />
+            <div className="flex min-h-56 items-center justify-center gap-3 text-sm text-[#88857D]">
+              <LoaderCircle size={20} className="animate-spin text-[#B9A477]" />
               Loading accounts...
             </div>
           ) : filteredAdmins.length === 0 ? (
+            /* Empty State */
             <div className="flex min-h-56 flex-col items-center justify-center px-5 text-center">
-              <UserRound size={30} className="mb-3 text-zinc-300" />
-              <p className="font-medium text-zinc-800">No accounts found</p>
-              <p className="mt-1 text-sm text-zinc-500">
+              <div className="mb-3 flex size-14 items-center justify-center rounded-2xl bg-[#F0EBDD] text-[#9A8150]">
+                <UserRound size={27} />
+              </div>
+              <p className="font-medium text-[#172C3D]">No accounts found</p>
+              <p className="mt-1 text-sm text-[#88857D]">
                 Try another search or create a new account.
               </p>
             </div>
           ) : (
+            /* Accounts Table */
             <div className="overflow-x-auto">
               <table className="w-full min-w-190 text-left text-sm">
-                <thead className="bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500">
+                <thead className="bg-[#f8f7f2] text-xs uppercase tracking-wide text-[#817D72]">
                   <tr>
-                    <th className="px-5 py-4 font-medium">Username</th>
-                    <th className="px-5 py-4 font-medium">Role</th>
-                    <th className="px-5 py-4 font-medium">Status</th>
-                    <th className="px-5 py-4 font-medium">Created</th>
-                    <th className="px-5 py-4 text-right font-medium">
+                    <th className="px-5 py-4 font-semibold">Username</th>
+                    <th className="px-5 py-4 font-semibold">Role</th>
+                    <th className="px-5 py-4 font-semibold">Status</th>
+                    <th className="px-5 py-4 font-semibold">Created</th>
+                    <th className="px-5 py-4 text-right font-semibold">
                       Actions
                     </th>
                   </tr>
                 </thead>
 
-                <tbody className="divide-y divide-zinc-100">
+                <tbody className="divide-y divide-[#F0EDE6]">
                   {filteredAdmins.map((admin) => (
                     <tr
                       key={admin.id}
-                      className="transition hover:bg-zinc-50/70"
+                      className="transition hover:bg-[#FCFBF8]"
                     >
+                      {/* Username */}
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-zinc-100 font-semibold text-zinc-700">
+                          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-[#E9E1CF] bg-[#F0EBDD] font-semibold text-[#80683D]">
                             {admin.username.charAt(0).toUpperCase()}
                           </div>
-                          <span className="font-medium text-zinc-900">
+
+                          <span className="font-medium text-[#172C3D]">
                             {admin.username}
                           </span>
                         </div>
                       </td>
 
+                      {/* Role */}
                       <td className="px-5 py-4">
-                        <span className="inline-flex rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-700">
+                        <span
+                          className={`inline-flex items-center rounded-lg border px-2.5 py-1.5 text-xs font-semibold ${
+                            ROLE_STYLES[admin.role]
+                          }`}
+                        >
                           {roleLabels[admin.role]}
                         </span>
                       </td>
 
+                      {/* Status */}
                       <td className="px-5 py-4">
                         <span
                           className={`inline-flex items-center gap-2 text-xs font-medium ${
                             admin.isActive
                               ? "text-emerald-700"
-                              : "text-zinc-500"
+                              : "text-[#88857D]"
                           }`}
                         >
                           <span
                             className={`size-2 rounded-full ${
-                              admin.isActive ? "bg-emerald-500" : "bg-zinc-300"
+                              admin.isActive ? "bg-emerald-500" : "bg-[#C9C5BB]"
                             }`}
                           />
                           {admin.isActive ? "Active" : "Inactive"}
                         </span>
                       </td>
 
-                      <td className="px-5 py-4 text-zinc-500">
+                      {/* Created Date */}
+                      <td className="px-5 py-4 text-[#88857D]">
                         {new Date(admin.createdAt).toLocaleDateString("en-IN", {
                           day: "numeric",
                           month: "short",
@@ -358,13 +381,14 @@ export default function AdminManagementPage() {
                         })}
                       </td>
 
+                      {/* Actions */}
                       <td className="px-5 py-4">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             type="button"
                             title="Edit account"
                             onClick={() => openEdit(admin)}
-                            className="cursor-pointer rounded-lg border border-zinc-200 p-2 text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-950"
+                            className="cursor-pointer rounded-lg border border-[#E6E1D7] bg-white p-2 text-[#52616B] transition hover:border-[#D5C7A7] hover:bg-[#F8F6EF] hover:text-[#172C3D]"
                           >
                             <Pencil size={16} />
                           </button>
@@ -377,7 +401,7 @@ export default function AdminManagementPage() {
                                 : "Activate account"
                             }
                             onClick={() => void toggleStatus(admin)}
-                            className="cursor-pointer rounded-lg border border-zinc-200 px-3 py-2 text-xs font-medium text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-950"
+                            className="cursor-pointer rounded-lg border border-[#E6E1D7] bg-white px-3 py-2 text-xs font-medium text-[#52616B] transition hover:border-[#D5C7A7] hover:bg-[#F8F6EF] hover:text-[#172C3D]"
                           >
                             {admin.isActive ? "Deactivate" : "Activate"}
                           </button>
@@ -386,7 +410,7 @@ export default function AdminManagementPage() {
                             type="button"
                             title="Delete account"
                             onClick={() => setDeleteTarget(admin)}
-                            className="cursor-pointer rounded-lg border border-red-100 p-2 text-red-600 transition hover:bg-red-50"
+                            className="cursor-pointer rounded-lg border border-red-100 bg-white p-2 text-red-600 transition hover:bg-red-50"
                           >
                             <Trash2 size={16} />
                           </button>
@@ -401,6 +425,7 @@ export default function AdminManagementPage() {
         </section>
       </div>
 
+      {/* Create / Edit Dialog */}
       {dialogOpen && (
         <div
           onMouseDown={(event) => {
@@ -408,45 +433,50 @@ export default function AdminManagementPage() {
               setDialogOpen(false);
             }
           }}
-          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-zinc-950/40 p-4 backdrop-blur-[2px]"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#172C3D]/40 p-4 backdrop-blur-[3px]"
         >
           <form
             onSubmit={saveAccount}
             onMouseDown={(event) => event.stopPropagation()}
-            className="my-auto w-full max-w-lg rounded-2xl border border-zinc-200 bg-white shadow-2xl"
+            className="my-auto w-full max-w-lg overflow-hidden rounded-2xl border border-[#E9E5DC] bg-white shadow-2xl"
           >
-            <div className="flex items-center justify-between border-b border-zinc-100 px-6 py-5">
+            {/* Dialog Header */}
+            <div className="flex items-center justify-between border-b border-[#EEEAE1] bg-[#FDFCFA] px-6 py-5">
               <div>
-                <h2 className="text-lg font-semibold text-zinc-950">
+                <h2 className="text-lg font-semibold text-[#172C3D]">
                   {editing ? "Edit account" : "Create account"}
                 </h2>
-                <p className="mt-1 text-sm text-zinc-500">
+                <p className="mt-1 text-sm text-[#88857D]">
                   Configure the username and access level.
                 </p>
               </div>
+
               <button
                 type="button"
                 onClick={() => setDialogOpen(false)}
-                className="cursor-pointer rounded-lg p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900"
+                className="cursor-pointer rounded-lg p-2 text-[#77766F] transition hover:bg-[#F0EBDD] hover:text-[#172C3D]"
               >
                 <X size={18} />
               </button>
             </div>
 
+            {/* Dialog Form */}
             <div className="space-y-5 p-6">
               {error && (
                 <p
                   role="alert"
-                  className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+                  className="rounded-lg border border-red-100 bg-[#FFF7F5] px-3 py-2 text-sm text-red-700"
                 >
                   {error}
                 </p>
               )}
 
+              {/* Username */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                <label className="mb-2 block text-sm font-medium text-[#52616B]">
                   Username
                 </label>
+
                 <input
                   required
                   minLength={3}
@@ -457,22 +487,26 @@ export default function AdminManagementPage() {
                     setForm({ ...form, username: event.target.value })
                   }
                   placeholder="e.g. amit.sharma"
-                  className="w-full rounded-xl border border-zinc-200 px-3.5 py-3 text-sm outline-none transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-100"
+                  className="w-full rounded-xl border border-[#E6E1D7] bg-[#FDFCFA] px-3.5 py-3 text-sm text-[#172C3D] outline-none transition placeholder:text-[#AAA69C] focus:border-[#B9A477] focus:ring-2 focus:ring-[#EDE5D3]"
                 />
-                <p className="mt-1.5 text-xs text-zinc-400">
+
+                <p className="mt-1.5 text-xs text-[#AAA69C]">
                   Use 3–30 letters, numbers, dots, underscores, or hyphens.
                 </p>
               </div>
 
+              {/* Password */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                <label className="mb-2 block text-sm font-medium text-[#52616B]">
                   {editing ? "New password (optional)" : "Password"}
                 </label>
+
                 <div className="relative">
                   <KeyRound
                     size={17}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-[#AAA69C]"
                   />
+
                   <input
                     type="password"
                     required={!editing}
@@ -488,15 +522,17 @@ export default function AdminManagementPage() {
                         ? "Leave blank to keep current password"
                         : "At least 8 characters"
                     }
-                    className="w-full rounded-xl border border-zinc-200 py-3 pl-10 pr-3 text-sm outline-none transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-100"
+                    className="w-full rounded-xl border border-[#E6E1D7] bg-[#FDFCFA] py-3 pl-10 pr-3 text-sm text-[#172C3D] outline-none transition placeholder:text-[#AAA69C] focus:border-[#B9A477] focus:ring-2 focus:ring-[#EDE5D3]"
                   />
                 </div>
               </div>
 
+              {/* Role */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-zinc-700">
+                <label className="mb-2 block text-sm font-medium text-[#52616B]">
                   Role
                 </label>
+
                 <select
                   value={form.role}
                   onChange={(event) =>
@@ -505,7 +541,7 @@ export default function AdminManagementPage() {
                       role: event.target.value as AdminRole,
                     })
                   }
-                  className="w-full cursor-pointer rounded-xl border border-zinc-200 bg-white px-3.5 py-3 text-sm outline-none transition focus:border-zinc-400 focus:ring-2 focus:ring-zinc-100"
+                  className="w-full cursor-pointer rounded-xl border border-[#E6E1D7] bg-[#FDFCFA] px-3.5 py-3 text-sm text-[#172C3D] outline-none transition focus:border-[#B9A477] focus:ring-2 focus:ring-[#EDE5D3]"
                 >
                   {ADMIN_ROLE_OPTIONS.map((role) => (
                     <option key={role.value} value={role.value}>
@@ -513,7 +549,8 @@ export default function AdminManagementPage() {
                     </option>
                   ))}
                 </select>
-                <p className="mt-2 text-xs leading-5 text-zinc-500">
+
+                <p className="mt-2 text-xs leading-5 text-[#88857D]">
                   {
                     ADMIN_ROLE_OPTIONS.find((role) => role.value === form.role)
                       ?.description
@@ -521,21 +558,23 @@ export default function AdminManagementPage() {
                 </p>
               </div>
 
+              {/* Account Status */}
               {editing && (
-                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-zinc-200 p-3.5">
+                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#E9E5DC] bg-[#FDFCFA] p-3.5 transition hover:border-[#D5C7A7]">
                   <input
                     type="checkbox"
                     checked={form.isActive}
                     onChange={(event) =>
                       setForm({ ...form, isActive: event.target.checked })
                     }
-                    className="size-4 cursor-pointer accent-zinc-900"
+                    className="size-4 cursor-pointer accent-[#172C3D]"
                   />
+
                   <span>
-                    <span className="block text-sm font-medium text-zinc-800">
+                    <span className="block text-sm font-medium text-[#172C3D]">
                       Account active
                     </span>
-                    <span className="mt-0.5 block text-xs text-zinc-500">
+                    <span className="mt-0.5 block text-xs text-[#88857D]">
                       Inactive accounts cannot sign in.
                     </span>
                   </span>
@@ -543,20 +582,23 @@ export default function AdminManagementPage() {
               )}
             </div>
 
-            <div className="flex justify-end gap-3 border-t border-zinc-100 px-6 py-4">
+            {/* Dialog Footer */}
+            <div className="flex justify-end gap-3 border-t border-[#EEEAE1] bg-[#FDFCFA] px-6 py-4">
               <button
                 type="button"
                 onClick={() => setDialogOpen(false)}
-                className="cursor-pointer rounded-xl border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+                className="cursor-pointer rounded-xl border border-[#E6E1D7] px-4 py-2.5 text-sm font-medium text-[#52616B] transition hover:bg-[#F8F6EF]"
               >
                 Cancel
               </button>
+
               <button
                 type="submit"
                 disabled={saving}
-                className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-[#172C3D] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#243F52] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving && <LoaderCircle size={16} className="animate-spin" />}
+
                 {saving
                   ? "Saving..."
                   : editing
@@ -568,6 +610,7 @@ export default function AdminManagementPage() {
         </div>
       )}
 
+      {/* Delete Confirmation Dialog */}
       {deleteTarget && (
         <div
           onMouseDown={(event) => {
@@ -576,35 +619,43 @@ export default function AdminManagementPage() {
               setError("");
             }
           }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/40 p-4 backdrop-blur-[2px]"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[#172C3D]/40 p-4 backdrop-blur-[3px]"
         >
           <div
             onMouseDown={(event) => event.stopPropagation()}
-            className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xl"
+            className="w-full max-w-md rounded-2xl border border-[#E9E5DC] bg-white p-6 shadow-2xl"
           >
             <div className="mb-4 flex size-11 items-center justify-center rounded-xl bg-red-50 text-red-600">
               <Trash2 size={20} />
             </div>
-            <h2 className="text-lg font-semibold text-zinc-950">
+
+            <h2 className="text-lg font-semibold text-[#172C3D]">
               Delete {deleteTarget.username}?
             </h2>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">
+
+            <p className="mt-2 text-sm leading-6 text-[#77766F]">
               This permanently removes the account. The person will no longer be
               able to sign in. This action cannot be undone.
             </p>
+
             {error && (
-              <p role="alert" className="mt-4 text-sm text-red-600">
+              <p
+                role="alert"
+                className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+              >
                 {error}
               </p>
             )}
+
             <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setDeleteTarget(null)}
-                className="cursor-pointer rounded-xl border border-zinc-200 px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+                className="cursor-pointer rounded-xl border border-[#E6E1D7] px-4 py-2.5 text-sm font-medium text-[#52616B] transition hover:bg-[#F8F6EF]"
               >
                 Cancel
               </button>
+
               <button
                 type="button"
                 onClick={() => void deleteAccount()}
