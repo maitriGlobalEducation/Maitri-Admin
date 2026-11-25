@@ -7,15 +7,15 @@ import {
   ShieldCheck,
   Pencil,
   Trash2,
-  KeyRound,
   UserRound,
   X,
   LoaderCircle,
 } from "lucide-react";
 import { ADMIN_ROLE_OPTIONS, ROLE_STYLES } from "@/lib/permissions";
 import type { AdminRole } from "@/models/Admin";
+import AdminCreateEditDialog from "@/components/Admin Page Components/AdminCreateEditDialog";
 
-type AdminAccount = {
+export type AdminAccount = {
   id: string;
   username: string;
   role: AdminRole;
@@ -23,7 +23,7 @@ type AdminAccount = {
   createdAt: string;
 };
 
-type AccountForm = {
+export type AccountForm = {
   username: string;
   password: string;
   role: AdminRole;
@@ -225,7 +225,7 @@ export default function AdminManagementPage() {
               ACCESS CONTROL
             </div>
 
-            <h1 className="text-3xl font-bold tracking-tight text-[#172C3D]">
+            <h1 className="text-2xl font-bold tracking-tight text-[#172C3D]">
               Admin management
             </h1>
 
@@ -237,7 +237,7 @@ export default function AdminManagementPage() {
           <button
             type="button"
             onClick={openCreate}
-            className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#172C3D] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#243F52]"
+            className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#172C3D] px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#243F52]"
           >
             <Plus size={18} />
             Add account
@@ -267,58 +267,61 @@ export default function AdminManagementPage() {
         )}
 
         {/* Accounts Section */}
+
         <section className="overflow-hidden rounded-2xl border border-[#E9E5DC] bg-white shadow-[0_2px_12px_rgba(23,44,61,0.04)]">
-          {/* Section Header */}
-          <div className="flex flex-col gap-4 border-b border-[#EEEAE1] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          {/* Header */}
+          <div className="flex flex-col gap-3 border-b border-[#EEEAE1] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
             <div>
-              <h2 className="font-semibold text-[#172C3D]">User accounts</h2>
-              <p className="mt-1 text-sm text-[#88857D]">
+              <h2 className="text-sm font-semibold text-[#172C3D]">
+                User accounts
+              </h2>
+              <p className="mt-0.5 text-xs text-[#88857D]">
                 {admins.length} total account{admins.length === 1 ? "" : "s"}
               </p>
             </div>
 
-            <div className="relative w-full sm:max-w-xs">
+            <div className="relative w-full sm:max-w-65">
               <Search
-                size={17}
+                size={16}
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-[#AAA69C]"
               />
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search username or role"
-                className="w-full rounded-xl border border-[#E6E1D7] bg-[#FDFCFA] py-2.5 pl-9 pr-3 text-sm text-[#172C3D] outline-none transition placeholder:text-[#AAA69C] focus:border-[#B9A477] focus:ring-2 focus:ring-[#EDE5D3]"
+                placeholder="Search username or role..."
+                className="w-full rounded-xl border border-[#E6E1D7] bg-[#FDFCFA] py-2 pl-9 pr-3 text-xs text-[#172C3D] outline-none transition placeholder:text-[#AAA69C] focus:border-[#C6AD72] focus:bg-white focus:ring-2 focus:ring-[#EDE5D3]/70"
               />
             </div>
           </div>
 
-          {/* Loading State */}
+          {/* Content */}
           {loading ? (
-            <div className="flex min-h-56 items-center justify-center gap-3 text-sm text-[#88857D]">
-              <LoaderCircle size={20} className="animate-spin text-[#B9A477]" />
+            <div className="flex min-h-48 items-center justify-center gap-2.5 text-sm text-[#88857D]">
+              <LoaderCircle size={18} className="animate-spin text-[#B9A477]" />
               Loading accounts...
             </div>
           ) : filteredAdmins.length === 0 ? (
-            /* Empty State */
-            <div className="flex min-h-56 flex-col items-center justify-center px-5 text-center">
-              <div className="mb-3 flex size-14 items-center justify-center rounded-2xl bg-[#F0EBDD] text-[#9A8150]">
-                <UserRound size={27} />
+            <div className="flex min-h-48 flex-col items-center justify-center px-5 text-center">
+              <div className="mb-3 flex size-12 items-center justify-center rounded-xl bg-[#F0EBDD] text-[#9A8150]">
+                <UserRound size={23} />
               </div>
-              <p className="font-medium text-[#172C3D]">No accounts found</p>
-              <p className="mt-1 text-sm text-[#88857D]">
+              <p className="text-sm font-semibold text-[#172C3D]">
+                No accounts found
+              </p>
+              <p className="mt-1 text-xs text-[#88857D]">
                 Try another search or create a new account.
               </p>
             </div>
           ) : (
-            /* Accounts Table */
             <div className="overflow-x-auto">
-              <table className="w-full min-w-190 text-left text-sm">
-                <thead className="bg-[#f8f7f2] text-xs uppercase tracking-wide text-[#817D72]">
+              <table className="w-full min-w-175 text-left text-sm">
+                <thead className="bg-[#FAF9F5] text-[10px] uppercase tracking-[0.08em] text-[#88857D]">
                   <tr>
-                    <th className="px-5 py-4 font-semibold">Username</th>
-                    <th className="px-5 py-4 font-semibold">Role</th>
-                    <th className="px-5 py-4 font-semibold">Status</th>
-                    <th className="px-5 py-4 font-semibold">Created</th>
-                    <th className="px-5 py-4 text-right font-semibold">
+                    <th className="px-5 py-3 font-semibold">Username</th>
+                    <th className="px-5 py-3 font-semibold">Role</th>
+                    <th className="px-5 py-3 font-semibold">Status</th>
+                    <th className="px-5 py-3 font-semibold">Created</th>
+                    <th className="px-5 py-3 text-right font-semibold">
                       Actions
                     </th>
                   </tr>
@@ -328,15 +331,14 @@ export default function AdminManagementPage() {
                   {filteredAdmins.map((admin) => (
                     <tr
                       key={admin.id}
-                      className="transition hover:bg-[#FCFBF8]"
+                      className="group transition-colors duration-150 hover:bg-[#FBF8EF]"
                     >
                       {/* Username */}
-                      <td className="px-5 py-4">
+                      <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-[#E9E1CF] bg-[#F0EBDD] font-semibold text-[#80683D]">
+                          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-[#E9E1CF] bg-[#F5F0E4] text-sm font-semibold text-[#80683D] transition-colors group-hover:border-[#E6D7AD] group-hover:bg-[#F0E4C4]">
                             {admin.username.charAt(0).toUpperCase()}
                           </div>
-
                           <span className="font-medium text-[#172C3D]">
                             {admin.username}
                           </span>
@@ -344,9 +346,9 @@ export default function AdminManagementPage() {
                       </td>
 
                       {/* Role */}
-                      <td className="px-5 py-4">
+                      <td className="px-5 py-3">
                         <span
-                          className={`inline-flex items-center rounded-lg border px-2.5 py-1.5 text-xs font-semibold ${
+                          className={`inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-semibold ${
                             ROLE_STYLES[admin.role]
                           }`}
                         >
@@ -355,7 +357,7 @@ export default function AdminManagementPage() {
                       </td>
 
                       {/* Status */}
-                      <td className="px-5 py-4">
+                      <td className="px-5 py-3">
                         <span
                           className={`inline-flex items-center gap-2 text-xs font-medium ${
                             admin.isActive
@@ -364,7 +366,7 @@ export default function AdminManagementPage() {
                           }`}
                         >
                           <span
-                            className={`size-2 rounded-full ${
+                            className={`size-1.5 rounded-full ${
                               admin.isActive ? "bg-emerald-500" : "bg-[#C9C5BB]"
                             }`}
                           />
@@ -372,8 +374,8 @@ export default function AdminManagementPage() {
                         </span>
                       </td>
 
-                      {/* Created Date */}
-                      <td className="px-5 py-4 text-[#88857D]">
+                      {/* Created */}
+                      <td className="px-5 py-3 text-xs text-[#88857D]">
                         {new Date(admin.createdAt).toLocaleDateString("en-IN", {
                           day: "numeric",
                           month: "short",
@@ -382,15 +384,15 @@ export default function AdminManagementPage() {
                       </td>
 
                       {/* Actions */}
-                      <td className="px-5 py-4">
-                        <div className="flex items-center justify-end gap-2">
+                      <td className="px-5 py-3">
+                        <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
                             title="Edit account"
                             onClick={() => openEdit(admin)}
-                            className="cursor-pointer rounded-lg border border-[#E6E1D7] bg-white p-2 text-[#52616B] transition hover:border-[#D5C7A7] hover:bg-[#F8F6EF] hover:text-[#172C3D]"
+                            className="cursor-pointer rounded-lg border border-transparent p-2 text-[#68747B] transition hover:border-[#E9DDBE] hover:bg-[#F3EBD8] hover:text-[#80683D]"
                           >
-                            <Pencil size={16} />
+                            <Pencil size={15} />
                           </button>
 
                           <button
@@ -401,7 +403,7 @@ export default function AdminManagementPage() {
                                 : "Activate account"
                             }
                             onClick={() => void toggleStatus(admin)}
-                            className="cursor-pointer rounded-lg border border-[#E6E1D7] bg-white px-3 py-2 text-xs font-medium text-[#52616B] transition hover:border-[#D5C7A7] hover:bg-[#F8F6EF] hover:text-[#172C3D]"
+                            className="cursor-pointer rounded-lg border border-transparent px-2.5 py-2 text-[11px] font-medium text-[#68747B] transition hover:border-[#E9DDBE] hover:bg-[#F3EBD8] hover:text-[#80683D]"
                           >
                             {admin.isActive ? "Deactivate" : "Activate"}
                           </button>
@@ -410,9 +412,9 @@ export default function AdminManagementPage() {
                             type="button"
                             title="Delete account"
                             onClick={() => setDeleteTarget(admin)}
-                            className="cursor-pointer rounded-lg border border-red-100 bg-white p-2 text-red-600 transition hover:bg-red-50"
+                            className="cursor-pointer rounded-lg border border-transparent p-2 text-[#A1A09A] transition hover:border-red-100 hover:bg-red-50 hover:text-red-600"
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={15} />
                           </button>
                         </div>
                       </td>
@@ -427,187 +429,17 @@ export default function AdminManagementPage() {
 
       {/* Create / Edit Dialog */}
       {dialogOpen && (
-        <div
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              setDialogOpen(false);
-            }
-          }}
-          className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#172C3D]/40 p-4 backdrop-blur-[3px]"
-        >
-          <form
-            onSubmit={saveAccount}
-            onMouseDown={(event) => event.stopPropagation()}
-            className="my-auto w-full max-w-lg overflow-hidden rounded-2xl border border-[#E9E5DC] bg-white shadow-2xl"
-          >
-            {/* Dialog Header */}
-            <div className="flex items-center justify-between border-b border-[#EEEAE1] bg-[#FDFCFA] px-6 py-5">
-              <div>
-                <h2 className="text-lg font-semibold text-[#172C3D]">
-                  {editing ? "Edit account" : "Create account"}
-                </h2>
-                <p className="mt-1 text-sm text-[#88857D]">
-                  Configure the username and access level.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setDialogOpen(false)}
-                className="cursor-pointer rounded-lg p-2 text-[#77766F] transition hover:bg-[#F0EBDD] hover:text-[#172C3D]"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Dialog Form */}
-            <div className="space-y-5 p-6">
-              {error && (
-                <p
-                  role="alert"
-                  className="rounded-lg border border-red-100 bg-[#FFF7F5] px-3 py-2 text-sm text-red-700"
-                >
-                  {error}
-                </p>
-              )}
-
-              {/* Username */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-[#52616B]">
-                  Username
-                </label>
-
-                <input
-                  required
-                  minLength={3}
-                  maxLength={30}
-                  pattern="[a-zA-Z0-9._-]+"
-                  value={form.username}
-                  onChange={(event) =>
-                    setForm({ ...form, username: event.target.value })
-                  }
-                  placeholder="e.g. amit.sharma"
-                  className="w-full rounded-xl border border-[#E6E1D7] bg-[#FDFCFA] px-3.5 py-3 text-sm text-[#172C3D] outline-none transition placeholder:text-[#AAA69C] focus:border-[#B9A477] focus:ring-2 focus:ring-[#EDE5D3]"
-                />
-
-                <p className="mt-1.5 text-xs text-[#AAA69C]">
-                  Use 3–30 letters, numbers, dots, underscores, or hyphens.
-                </p>
-              </div>
-
-              {/* Password */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-[#52616B]">
-                  {editing ? "New password (optional)" : "Password"}
-                </label>
-
-                <div className="relative">
-                  <KeyRound
-                    size={17}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-[#AAA69C]"
-                  />
-
-                  <input
-                    type="password"
-                    required={!editing}
-                    minLength={8}
-                    maxLength={128}
-                    autoComplete="new-password"
-                    value={form.password}
-                    onChange={(event) =>
-                      setForm({ ...form, password: event.target.value })
-                    }
-                    placeholder={
-                      editing
-                        ? "Leave blank to keep current password"
-                        : "At least 8 characters"
-                    }
-                    className="w-full rounded-xl border border-[#E6E1D7] bg-[#FDFCFA] py-3 pl-10 pr-3 text-sm text-[#172C3D] outline-none transition placeholder:text-[#AAA69C] focus:border-[#B9A477] focus:ring-2 focus:ring-[#EDE5D3]"
-                  />
-                </div>
-              </div>
-
-              {/* Role */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-[#52616B]">
-                  Role
-                </label>
-
-                <select
-                  value={form.role}
-                  onChange={(event) =>
-                    setForm({
-                      ...form,
-                      role: event.target.value as AdminRole,
-                    })
-                  }
-                  className="w-full cursor-pointer rounded-xl border border-[#E6E1D7] bg-[#FDFCFA] px-3.5 py-3 text-sm text-[#172C3D] outline-none transition focus:border-[#B9A477] focus:ring-2 focus:ring-[#EDE5D3]"
-                >
-                  {ADMIN_ROLE_OPTIONS.map((role) => (
-                    <option key={role.value} value={role.value}>
-                      {role.label}
-                    </option>
-                  ))}
-                </select>
-
-                <p className="mt-2 text-xs leading-5 text-[#88857D]">
-                  {
-                    ADMIN_ROLE_OPTIONS.find((role) => role.value === form.role)
-                      ?.description
-                  }
-                </p>
-              </div>
-
-              {/* Account Status */}
-              {editing && (
-                <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-[#E9E5DC] bg-[#FDFCFA] p-3.5 transition hover:border-[#D5C7A7]">
-                  <input
-                    type="checkbox"
-                    checked={form.isActive}
-                    onChange={(event) =>
-                      setForm({ ...form, isActive: event.target.checked })
-                    }
-                    className="size-4 cursor-pointer accent-[#172C3D]"
-                  />
-
-                  <span>
-                    <span className="block text-sm font-medium text-[#172C3D]">
-                      Account active
-                    </span>
-                    <span className="mt-0.5 block text-xs text-[#88857D]">
-                      Inactive accounts cannot sign in.
-                    </span>
-                  </span>
-                </label>
-              )}
-            </div>
-
-            {/* Dialog Footer */}
-            <div className="flex justify-end gap-3 border-t border-[#EEEAE1] bg-[#FDFCFA] px-6 py-4">
-              <button
-                type="button"
-                onClick={() => setDialogOpen(false)}
-                className="cursor-pointer rounded-xl border border-[#E6E1D7] px-4 py-2.5 text-sm font-medium text-[#52616B] transition hover:bg-[#F8F6EF]"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="submit"
-                disabled={saving}
-                className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-[#172C3D] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#243F52] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {saving && <LoaderCircle size={16} className="animate-spin" />}
-
-                {saving
-                  ? "Saving..."
-                  : editing
-                    ? "Save changes"
-                    : "Create account"}
-              </button>
-            </div>
-          </form>
-        </div>
+        <AdminCreateEditDialog
+          dialogOpen={dialogOpen}
+          setDialogOpen={setDialogOpen}
+          editing={editing}
+          saving={saving}
+          error={error}
+          form={form}
+          setForm={setForm}
+          saveAccount={saveAccount}
+          ADMIN_ROLE_OPTIONS={ADMIN_ROLE_OPTIONS}
+        />
       )}
 
       {/* Delete Confirmation Dialog */}

@@ -24,6 +24,7 @@ export default function WorkspaceLauncher({
   canAccessCRM,
 }: WorkspaceLauncherProps) {
   const reduceMotion = useReducedMotion();
+  const displayName = username.split("@")[0];
 
   const workspaces = [
     {
@@ -92,11 +93,11 @@ export default function WorkspaceLauncher({
 
           <div className="flex items-center gap-2.5 rounded-full border border-zinc-200 bg-white px-3 py-2">
             <span className="size-2 rounded-full bg-emerald-500" />
-            <span className="hidden text-xs font-medium text-zinc-600 sm:inline">
-              {username}
+            <span className="hidden text-xs font-bold text-zinc-600 sm:inline capitalize">
+              {displayName}
             </span>
-            <span className="text-xs font-semibold text-zinc-500 sm:hidden">
-              {username.slice(0, 2).toUpperCase()}
+            <span className="text-xs font-bold text-zinc-500 sm:hidden capitalize">
+              {displayName.slice(0, 2).toUpperCase()}
             </span>
           </div>
         </motion.header>
@@ -124,8 +125,10 @@ export default function WorkspaceLauncher({
             </h1>
 
             <p className="mt-5 max-w-lg text-sm leading-7 text-zinc-500 sm:text-base">
-              Welcome, {username}. Everything your team needs, thoughtfully
-              organised in one place. Where would you like to begin?
+              Welcome,{" "}
+              <span className="font-bold capitalize">{displayName}</span>.
+              Everything your team needs, thoughtfully organised in one place.
+              Where would you like to begin?
             </p>
           </motion.div>
         </section>
@@ -258,7 +261,9 @@ export default function WorkspaceLauncher({
 
           <p>
             Signed in as{" "}
-            <span className="font-semibold text-zinc-600">{username}</span>
+            <span className="font-semibold text-zinc-600 capitalize">
+              {displayName}
+            </span>
           </p>
         </footer>
       </div>

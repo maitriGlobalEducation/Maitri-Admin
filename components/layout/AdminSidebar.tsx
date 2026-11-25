@@ -464,11 +464,11 @@ export default function AdminSidebar({ admin }: AdminSidebarProps) {
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-[#172C3D]">
-              {admin?.username ?? "Loading account..."}
+            <p className="truncate text-sm font-bold capitalize text-[#172C3D]">
+              {admin?.username.split("@")[0] ?? "Loading account..."}
             </p>
             <p className="mt-0.5 truncate text-[10px] font-medium uppercase tracking-wider text-[#9A8B70]">
-              {admin?.role?.replaceAll("_", " ") ?? "Administrator"}
+              {admin?.role?.replaceAll("_", " ") ?? "No Role"}
             </p>
           </div>
 
