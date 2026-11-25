@@ -261,7 +261,7 @@ export default function AdminSidebar({ admin }: AdminSidebarProps) {
 
             {hasPermission(admin.role, "crm:access") && (
               <Link
-                href="/crm"
+                href="/crm/dashboard"
                 className={`flex items-center justify-center gap-2 rounded-xl px-3 py-3 text-xs font-semibold transition-all ${
                   isCRM
                     ? "bg-[#172C3D] text-white shadow-sm"
