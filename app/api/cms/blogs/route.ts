@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { authorizeAdmin } from "@/lib/api-auth";
 import Blog from "@/models/Blog";
+import { revalidatePublicpage } from "@/services/revalidation.service";
 
 export async function POST(request: NextRequest) {
   const { response } = await authorizeAdmin();
@@ -112,6 +113,8 @@ export async function POST(request: NextRequest) {
       featured: Boolean(featured),
       publishedAt: status === "published" ? new Date() : null,
     });
+
+    await revalidatePublicpage();
 
     return NextResponse.json(
       {

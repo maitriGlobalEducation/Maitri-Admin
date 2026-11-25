@@ -4,6 +4,7 @@ import { authorizeAdmin } from "@/lib/api-auth";
 import { connectDB } from "@/lib/mongodb";
 import Blog from "@/models/Blog";
 import cloudinary from "@/lib/cloudinary";
+import { revalidatePublicpage } from "@/services/revalidation.service";
 
 interface RouteContext {
   params: Promise<{
@@ -68,6 +69,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       }
 
       await existingBlog.save();
+
+      await revalidatePublicpage();
 
       return NextResponse.json({
         success: true,
@@ -228,6 +231,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     await existingBlog.save();
 
+    await revalidatePublicpage();
+
     return NextResponse.json({
       success: true,
       message: "Blog updated successfully",
@@ -295,6 +300,8 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
 
     // Delete the blog from MongoDB first.
     await blog.deleteOne();
+
+    await revalidatePublicpage();
 
     // Then clean up its Cloudinary assets.
     const cloudinaryResults = await Promise.allSettled(
